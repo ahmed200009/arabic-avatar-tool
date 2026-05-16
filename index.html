@@ -631,751 +631,619 @@ select.form-input option { background: var(--bg3); }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 
-<script>
+<script type="module">
+  // 1. استيراد حزم Firebase المتوافقة مع المتصفح مباشرة (رابط CDN)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+  
+  // 2. بيانات مشروعك الخاصة بـ Firebase (مأخوذة من لقطة الشاشة الخاصة بك)
   const firebaseConfig = {
     apiKey: "AIzaSyA7AJLA35DFXpYQoyl20jiieuatcJ9rdd8",
     authDomain: "arabic-avatar-tool.firebaseapp.com",
     projectId: "arabic-avatar-tool",
     storageBucket: "arabic-avatar-tool.firebasestorage.app",
     messagingSenderId: "1048257032462",
-    appId: "1:1048257032462:web:f08cbde404f702fc18e75f"
+    appId: "1:1048257032462:web:f0cbde404f702fc18e75f"
   };
-
-  // تشغيل الفايربيز وتجهيز أدوات قاعدة البيانات والملفات
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();       // سنستخدمه لاحقاً لحفظ نصوص المحادثات بشكل دائم
-  const storage = firebase.storage();   // سنستخدمه لاحقاً لرفع وحفظ ملفات الصوت (audioBlob)
-// متغيرات سحابية جديدة لإدارة المايكروفون والملفات الصوتية
-let mediaRecorder;
-let audioChunks = [];
-let latestAudioUrl = "";
-</script>
-<script>
-// ===== STARS =====
-(function() {
-  const c = document.getElementById('stars');
-  for (let i = 0; i < 80; i++) {
-    const s = document.createElement('div');
-    s.className = 'star';
-    const sz = Math.random() * 2 + 0.5;
-    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*5}s;--max-op:${0.1+Math.random()*0.4};`;
-    c.appendChild(s);
+  
+  // تهيئة الخدمات
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+  
+  // ===== STARS =====
+  (function() {
+    const c = document.getElementById('stars');
+    for (let i = 0; i < 80; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const sz = Math.random() * 2 + 0.5;
+      s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*5}s;--max-op:${0.1+Math.random()*0.4};`;
+      c.appendChild(s);
+    }
+  })();
+  
+  // ===== STATE =====
+  let conversations = [];
+  let editingId = null;
+  let selectedAvatar = '🧑';
+  let pendingDeleteId = null;
+  let qRecordings = {}; 
+  
+  // Student
+  let activeConvo = null;
+  let currentQ = 0, attempt = 0;
+  let isSpeaking = false, isRecording = false;
+  let mouthInterval = null, recordTimer = null;
+  let micTimerInterval = null, micSeconds = 0;
+  let mediaRecorder = null, audioChunks = [];
+  
+  // ===== NAVIGATION =====
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    const map = { teacher: 0, create: 1, student: 2 };
+    document.querySelectorAll('.tab-btn')[map[name]].classList.add('active');
   }
-})();
-
-// ===== STATE =====
-let conversations = [];
-let editingId = null;
-let selectedAvatar = '🧑';
-let pendingDeleteId = null;
-let qRecordings = {}; // {index: {audioUrl, duration, mediaRecorder}}
-let latestStudentAudioUrl = null;
-
-// Student
-let activeConvo = null;
-let currentQ = 0, attempt = 0;
-let isSpeaking = false, isRecording = false;
-let mouthInterval = null, recordTimer = null;
-let micTimerInterval = null, micSeconds = 0;
-
-
-// ===== NAVIGATION =====
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  const map = { teacher: 0, create: 1, student: 2 };
-  document.querySelectorAll('.tab-btn')[map[name]].classList.add('active');
-}
-
-// ===== MODALS =====
-function openModal(id) { document.getElementById(id).classList.add('show'); }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
-});
-
-// ===== TOAST =====
-function showToast(msg, dur = 2800) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), dur);
-}
-
-// ===== TEACHER PAGE =====
-function renderTeacher() {
-  const grid = document.getElementById('convo-grid');
-  const noConvos = document.getElementById('no-convos');
-  const sub = document.getElementById('teacher-sub');
-  const clearBtn = document.getElementById('clear-all-btn');
-
-  grid.innerHTML = '';
-
-  if (conversations.length === 0) {
-    noConvos.style.display = 'block';
-    sub.textContent = 'لا توجد محادثات بعد';
-    clearBtn.style.display = 'none';
-    return;
+  
+  // ===== MODALS =====
+  function openModal(id) { document.getElementById(id).classList.add('show'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+  });
+  
+  // ===== TOAST =====
+  function showToast(msg, dur = 2800) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), dur);
   }
-
-  noConvos.style.display = 'none';
-  clearBtn.style.display = 'inline-flex';
-  const done = conversations.filter(c => c.questions.length > 0 && c.questions.some(q => q.text)).length;
-  sub.textContent = `${conversations.length} محادثة · ${done} جاهزة للتشغيل`;
-
-  conversations.forEach(convo => {
-    const hasQ = convo.questions.length > 0 && convo.questions.some(q => q.text && q.text.trim());
-    const card = document.createElement('div');
-    card.className = 'convo-card';
-    card.innerHTML = `
-      <div class="avatar-thumb">${convo.avatar}</div>
-      <div class="convo-info">
-        <div class="convo-name">${escHtml(convo.name) || 'بدون عنوان'}</div>
-        <div class="convo-meta">${convo.questions.filter(q=>q.text).length} أسئلة · ${convo.level}</div>
+  
+  // ===== TEACHER PAGE =====
+  function renderTeacher() {
+    const grid = document.getElementById('convo-grid');
+    const noConvos = document.getElementById('no-convos');
+    const sub = document.getElementById('teacher-sub');
+    const clearBtn = document.getElementById('clear-all-btn');
+  
+    grid.innerHTML = '';
+  
+    if (conversations.length === 0) {
+      noConvos.style.display = 'block';
+      sub.textContent = 'لا توجد محادثات بعد';
+      clearBtn.style.display = 'none';
+      return;
+    }
+  
+    noConvos.style.display = 'none';
+    clearBtn.style.display = 'inline-flex';
+    const done = conversations.filter(c => c.questions.length > 0 && c.questions.some(q => q.text)).length;
+    sub.textContent = `${conversations.length} محادثة · ${done} جاهزة للتشغيل`;
+  
+    conversations.forEach(convo => {
+      const hasQ = convo.questions.length > 0 && convo.questions.some(q => q.text && q.text.trim());
+      const card = document.createElement('div');
+      card.className = 'convo-card';
+      card.innerHTML = `
+        <div class="avatar-thumb">${convo.avatar}</div>
+        <div class="convo-info">
+          <div class="convo-name">${escHtml(convo.name) || 'بدون عنوان'}</div>
+          <div class="convo-meta">${convo.questions.filter(q=>q.text).length} أسئلة · ${convo.level}</div>
+        </div>
+        <span class="badge ${hasQ ? 'badge-done' : 'badge-draft'}">${hasQ ? '✓ جاهزة' : '⏸ مسودة'}</span>
+        <div class="card-actions">
+          <button class="icon-btn icon-btn-play" title="تشغيل" onclick="playConvo('${convo.id}')">▶</button>
+          <button class="icon-btn icon-btn-edit" title="تعديل" onclick="editConvo('${convo.id}')">✎</button>
+          <button class="icon-btn icon-btn-delete" title="حذف" onclick="askDelete('${convo.id}')">🗑</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+  
+  function askDelete(id) {
+    pendingDeleteId = id;
+    document.getElementById('confirm-delete-btn').onclick = () => {
+      conversations = conversations.filter(c => c.id !== pendingDeleteId);
+      closeModal('delete-modal');
+      renderTeacher();
+      showToast('🗑 تم حذف المحادثة');
+    };
+    openModal('delete-modal');
+  }
+  
+  function clearAllConvos() {
+    conversations = [];
+    closeModal('clear-all-modal');
+    renderTeacher();
+    showToast('🗑 تم مسح جميع المحادثات');
+  }
+  
+  // ===== CREATE PAGE =====
+  function newConversation() {
+    editingId = null;
+    selectedAvatar = '🧑';
+    document.getElementById('create-page-title').textContent = 'إنشاء محادثة جديدة';
+    document.getElementById('convo-name').value = '';
+    document.getElementById('convo-level').selectedIndex = 0;
+    document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === '🧑'));
+    qRecordings = {};
+    document.getElementById('q-list').innerHTML = '';
+    showPage('create');
+  }
+  
+  function editConvo(id) {
+    const convo = conversations.find(c => c.id === id);
+    if (!convo) return;
+    editingId = id;
+    selectedAvatar = convo.avatar;
+    document.getElementById('create-page-title').textContent = 'تعديل المحادثة';
+    document.getElementById('convo-name').value = convo.name;
+    document.getElementById('convo-level').value = convo.level;
+    document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === convo.avatar));
+    qRecordings = {};
+    convo.questions.forEach((q, i) => {
+      if (q.audioBlob) qRecordings[i] = { blob: q.audioBlob, duration: q.audioDuration };
+    });
+    document.getElementById('q-list').innerHTML = '';
+    convo.questions.forEach((q, i) => addQuestionEl(i, q.text, q.hint, !!qRecordings[i], qRecordings[i]?.duration));
+    showPage('create');
+  }
+  
+  function addQuestion() {
+    const i = document.getElementById('q-list').children.length;
+    addQuestionEl(i, '', '', false, null);
+  }
+  
+  function addQuestionEl(i, text, hint, hasAudio, audioDuration) {
+    const list = document.getElementById('q-list');
+    const item = document.createElement('div');
+    item.className = 'q-item';
+    item.dataset.index = i;
+  
+    const audioHtml = hasAudio
+      ? `<button class="rec-btn done" onclick="toggleQRecord(${i},this)">🔊 مسجّل · ${fmtDur(audioDuration)}</button>
+         <button class="audio-clear-btn" onclick="clearQAudio(${i},this)">✕ مسح الصوت</button>`
+      : `<button class="rec-btn idle" onclick="toggleQRecord(${i},this)">⏺ سجّل الآن</button>`;
+  
+    item.innerHTML = `
+      <div class="q-top">
+        <span class="q-label">سؤال ${i + 1}</span>
+        <div class="q-top-left">
+          ${audioHtml}
+          <button class="q-delete-btn" onclick="deleteQuestion(this)" title="حذف السؤال">✕</button>
+        </div>
       </div>
-      <span class="badge ${hasQ ? 'badge-done' : 'badge-draft'}">${hasQ ? '✓ جاهزة' : '⏸ مسودة'}</span>
-      <div class="card-actions">
-        <button class="icon-btn icon-btn-play" title="تشغيل" onclick="playConvo('${convo.id}')">▶</button>
-        <button class="icon-btn icon-btn-edit" title="تعديل" onclick="editConvo('${convo.id}')">✎</button>
-        <button class="icon-btn icon-btn-delete" title="حذف" onclick="askDelete('${convo.id}')">🗑</button>
+      <div class="q-edit-row">
+        <input class="q-text-input" placeholder="نص السؤال الذي سيقوله الأفاتار..." value="${escHtml(text)}">
+        <textarea class="q-hint-input" rows="2" placeholder="إرشاد الإجابة للطالب (اختياري)...">${escHtml(hint)}</textarea>
       </div>
     `;
-    grid.appendChild(card);
-  });
-}
-
-function askDelete(id) {
-  pendingDeleteId = id;
-  document.getElementById('confirm-delete-btn').onclick = () => {
-    conversations = conversations.filter(c => c.id !== pendingDeleteId);
-    closeModal('delete-modal');
-    renderTeacher();
-    showToast('🗑 تم حذف المحادثة');
-  };
-  openModal('delete-modal');
-}
-
-function clearAllConvos() {
-  conversations = [];
-  closeModal('clear-all-modal');
-  renderTeacher();
-  showToast('🗑 تم مسح جميع المحادثات');
-}
-
-// ===== CREATE PAGE =====
-function newConversation() {
-  editingId = null;
-  selectedAvatar = '🧑';
-  document.getElementById('create-page-title').textContent = 'إنشاء محادثة جديدة';
-  document.getElementById('convo-name').value = '';
-  document.getElementById('convo-level').selectedIndex = 0;
-  document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === '🧑'));
-  qRecordings = {};
-  document.getElementById('q-list').innerHTML = '';
-  showPage('create');
-}
-
-function editConvo(id) {
-  const convo = conversations.find(c => c.id === id);
-  if (!convo) return;
-  editingId = id;
-  selectedAvatar = convo.avatar;
-  document.getElementById('create-page-title').textContent = 'تعديل المحادثة';
-  document.getElementById('convo-name').value = convo.name;
-  document.getElementById('convo-level').value = convo.level;
-  document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === convo.avatar));
-  qRecordings = {};
-  convo.questions.forEach((q, i) => {
-    if (q.audioUrl) qRecordings[i] = { audioUrl: q.audioUrl, duration: q.audioDuration };
-  });
-  document.getElementById('q-list').innerHTML = '';
-  convo.questions.forEach((q, i) => addQuestionEl(i, q.text, q.hint, !!qRecordings[i], qRecordings[i]?.duration));
-  showPage('create');
-}
-
-function addQuestion() {
-  const i = document.getElementById('q-list').children.length;
-  addQuestionEl(i, '', '', false, null);
-}
-
-function addQuestionEl(i, text, hint, hasAudio, audioDuration) {
-  const list = document.getElementById('q-list');
-  const item = document.createElement('div');
-  item.className = 'q-item';
-  item.dataset.index = i;
-
-  const audioHtml = hasAudio
-    ? `<button class="rec-btn done" onclick="toggleQRecord(${i},this)">🔊 مسجّل · ${fmtDur(audioDuration)}</button>
-       <button class="audio-clear-btn" onclick="clearQAudio(${i},this)">✕ مسح الصوت</button>`
-    : `<button class="rec-btn idle" onclick="toggleQRecord(${i},this)">⏺ سجّل الآن</button>`;
-
-  item.innerHTML = `
-    <div class="q-top">
-      <span class="q-label">سؤال ${i + 1}</span>
-      <div class="q-top-left">
-        ${audioHtml}
-        <button class="q-delete-btn" onclick="deleteQuestion(this)" title="حذف السؤال">✕</button>
-      </div>
-    </div>
-    <div class="q-edit-row">
-      <input class="q-text-input" placeholder="نص السؤال الذي سيقوله الأفاتار..." value="${escHtml(text)}">
-      <textarea class="q-hint-input" rows="2" placeholder="إرشاد الإجابة للطالب (اختياري)...">${escHtml(hint)}</textarea>
-    </div>
-  `;
-  list.appendChild(item);
-}
-
-function deleteQuestion(btn) {
-  const item = btn.closest('.q-item');
-  const i = parseInt(item.dataset.index);
-  item.remove();
-  delete qRecordings[i];
-  reindexQuestions();
-}
-
-function reindexQuestions() {
-  const items = document.getElementById('q-list').querySelectorAll('.q-item');
-  const newRec = {};
-  items.forEach((item, idx) => {
-    const oldIdx = parseInt(item.dataset.index);
-    if (qRecordings[oldIdx]) newRec[idx] = qRecordings[oldIdx];
-    item.dataset.index = idx;
-    item.querySelector('.q-label').textContent = `سؤال ${idx + 1}`;
-    // Fix onclick indices
-    item.querySelectorAll('[onclick]').forEach(el => {
-      el.setAttribute('onclick', el.getAttribute('onclick').replace(/\(\d+,/, `(${idx},`).replace(/\(\d+\)/, `(${idx})`));
-    });
-  });
-  qRecordings = newRec;
-}
-
-function selectChar(el, char) {
-  document.querySelectorAll('.char-pick').forEach(c => c.classList.remove('sel'));
-  el.classList.add('sel');
-  selectedAvatar = char;
-}
-
-function escHtml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function fmtDur(sec) {
-  if (!sec && sec !== 0) return '0:00';
-  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
-  return `${m}:${s.toString().padStart(2,'0')}`;
-}
-
-// ===== AUDIO RECORDING (Create Page) =====
-async function toggleQRecord(i, btn) {
-
-  if (btn.classList.contains('recording')) {
-
-    if (qRecordings[i]?.mediaRecorder &&
-        qRecordings[i].mediaRecorder.state !== 'inactive') {
-
-      qRecordings[i].mediaRecorder.stop();
-    }
-
-    return;
+    list.appendChild(item);
   }
-
-  try {
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
-
-    if (!qRecordings[i]) qRecordings[i] = {};
-
-    const mr = new MediaRecorder(stream);
-
-    const chunks = [];
-
-    const startTime = Date.now();
-
-    qRecordings[i].mediaRecorder = mr;
-
-    mr.ondataavailable = e => {
-
-      if (e.data.size > 0) {
-        chunks.push(e.data);
-      }
-    };
-
-    mr.onstop = async () => {
-
-      stream.getTracks().forEach(t => t.stop());
-
-      const audioBlob = new Blob(chunks, {
-        type: 'audio/webm'
+  
+  function deleteQuestion(btn) {
+    const item = btn.closest('.q-item');
+    const i = parseInt(item.dataset.index);
+    item.remove();
+    delete qRecordings[i];
+    reindexQuestions();
+  }
+  
+  function reindexQuestions() {
+    const items = document.getElementById('q-list').querySelectorAll('.q-item');
+    const newRec = {};
+    items.forEach((item, idx) => {
+      const oldIdx = parseInt(item.dataset.index);
+      if (qRecordings[oldIdx]) newRec[idx] = qRecordings[oldIdx];
+      item.dataset.index = idx;
+      item.querySelector('.q-label').textContent = `سؤال ${idx + 1}`;
+      item.querySelectorAll('[onclick]').forEach(el => {
+        el.setAttribute('onclick', el.getAttribute('onclick').replace(/\(\d+,/, `(${idx},`).replace(/\(\d+\)/, `(${idx})`));
       });
-
-      const duration = (Date.now() - startTime) / 1000;
-
-      btn.textContent = '⏳ جاري الرفع...';
-
-      try {
-
-        const fileName = `audios/${Date.now()}_${i}.webm`;
-
-        const fileRef = storage.ref().child(fileName);
-
-        await fileRef.put(audioBlob);
-
-        const downloadURL = await fileRef.getDownloadURL();
-
-        qRecordings[i].audioUrl = downloadURL;
-
-        qRecordings[i].duration = duration;
-
+    });
+    qRecordings = newRec;
+  }
+  
+  function selectChar(el, char) {
+    document.querySelectorAll('.char-pick').forEach(c => c.classList.remove('sel'));
+    el.classList.add('sel');
+    selectedAvatar = char;
+  }
+  
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  
+  function fmtDur(sec) {
+    if (!sec && sec !== 0) return '0:00';
+    const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+    return `${m}:${s.toString().padStart(2,'0')}`;
+  }
+  
+  // ===== AUDIO RECORDING (Teacher Page) =====
+  function toggleQRecord(i, btn) {
+    if (btn.classList.contains('recording')) {
+      if (qRecordings[i]?.mediaRecorder && qRecordings[i].mediaRecorder.state !== 'inactive') {
+        qRecordings[i].mediaRecorder.stop();
+      }
+      return;
+    }
+  
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('المتصفح لا يدعم التسجيل الصوتي.');
+      return;
+    }
+  
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      if (!qRecordings[i]) qRecordings[i] = {};
+      const mr = new MediaRecorder(stream);
+      const chunks = [];
+      const t0 = Date.now();
+      qRecordings[i].mediaRecorder = mr;
+  
+      mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const dur = (Date.now() - t0) / 1000;
+        qRecordings[i].blob = blob;
+        qRecordings[i].duration = dur;
+  
         btn.className = 'rec-btn done';
-
-        btn.textContent = `🔊 تم الرفع · ${fmtDur(duration)}`;
-
-      } catch (error) {
-
-        console.error(error);
-
-        alert('حدث خطأ أثناء رفع الصوت.');
-      }
-    };
-
-    mr.start();
-
-    btn.className = 'rec-btn recording';
-
-    btn.textContent = '⏹ إيقاف التسجيل';
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert('يجب السماح باستخدام الميكروفون.');
-  }
-}
-
-function clearQAudio(i, btn) {
-  if (qRecordings[i]) { qRecordings[i].blob = null; qRecordings[i].duration = null; }
-  const parent = btn.parentElement;
-  const recBtn = parent.querySelector('.rec-btn');
-  if (recBtn) {
-    recBtn.className = 'rec-btn idle';
-    recBtn.textContent = '⏺ سجّل الآن';
-    recBtn.setAttribute('onclick', `toggleQRecord(${i},this)`);
-  }
-  btn.remove();
-}
-
-// ===== SAVE =====
-function gatherForm() {
-  const name = document.getElementById('convo-name').value.trim();
-  const level = document.getElementById('convo-level').value;
-  const questions = [];
-  document.getElementById('q-list').querySelectorAll('.q-item').forEach((item, i) => {
-    questions.push({
-      text: item.querySelector('.q-text-input')?.value?.trim() || '',
-      hint: item.querySelector('.q-hint-input')?.value?.trim() || '',
-      audioUrl: qRecordings[i]?.audioUrl || null,
-      audioDuration: qRecordings[i]?.duration || null,
+        btn.textContent = `🔊 مسجّل · ${fmtDur(dur)}`;
+  
+        const parent = btn.parentElement;
+        if (!parent.querySelector('.audio-clear-btn')) {
+          const cb = document.createElement('button');
+          cb.className = 'audio-clear-btn';
+          cb.textContent = '✕ مسح الصوت';
+          cb.onclick = () => clearQAudio(i, cb);
+          btn.after(cb);
+        }
+      };
+  
+      mr.start();
+      btn.className = 'rec-btn recording';
+      btn.textContent = '⏹ إيقاف التسجيل';
+    }).catch(() => {
+      alert('تأكد من منح إذن الميكروفون للمتصفح.');
     });
-  });
-  return { name: name || 'محادثة بدون عنوان', level, avatar: selectedAvatar, questions };
-}
-
-async function saveConvo() {
-
-  const data = gatherForm();
-
-  try {
-
-    if (editingId) {
-
-      await db.collection("conversations")
-        .doc(editingId)
-        .set(data);
-
-    } else {
-
-      const docRef = await db.collection("conversations")
-        .add({
-          ...data,
-          createdAt: new Date()
-        });
-
-      editingId = docRef.id;
+  }
+  
+  function clearQAudio(i, btn) {
+    if (qRecordings[i]) { qRecordings[i].blob = null; qRecordings[i].duration = null; }
+    const parent = btn.parentElement;
+    const recBtn = parent.querySelector('.rec-btn');
+    if (recBtn) {
+      recBtn.className = 'rec-btn idle';
+      recBtn.textContent = '⏺ سجّل الآن';
+      recBtn.setAttribute('onclick', `toggleQRecord(${i},this)`);
     }
-
-    await loadConversations();
-
-    showToast('✅ تم الحفظ سحابياً');
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert('حدث خطأ أثناء الحفظ.');
+    btn.remove();
   }
-}
-
-function saveAndPlay() {
-  const data = gatherForm();
-  if (!data.questions.some(q => q.text)) {
-    showToast('⚠️ أضف سؤالاً واحداً على الأقل قبل التشغيل');
-    return;
-  }
-  if (editingId) {
-    const idx = conversations.findIndex(c => c.id === editingId);
-    if (idx !== -1) conversations[idx] = { ...conversations[idx], ...data };
-  } else {
-    editingId = 'c_' + Date.now();
-    conversations.push({ id: editingId, ...data });
-  }
-  renderTeacher();
-  playConvo(editingId);
-}
-
-// ===== STUDENT MODE =====
-function openStudentMode() {
-  if (conversations.length === 0) {
-    showToast('⚠️ أنشئ محادثة أولاً ثم اضغط تشغيل');
-    showPage('teacher');
-    return;
-  }
-  const ready = conversations.find(c => c.questions.some(q => q.text));
-  if (ready) playConvo(ready.id);
-  else showToast('⚠️ لا توجد محادثات تحتوي على أسئلة بعد');
-}
-
-function playConvo(id) {
-  const convo = conversations.find(c => c.id === id);
-  if (!convo) return;
-  const validQ = convo.questions.filter(q => q.text);
-  if (validQ.length === 0) {
-    showToast('⚠️ هذه المحادثة لا تحتوي على أسئلة بعد');
-    return;
-  }
-  activeConvo = { ...convo, questions: validQ };
-  currentQ = 0; attempt = 0;
-  document.getElementById('success-screen').classList.remove('show');
-  document.getElementById('student-main').style.display = 'flex';
-  showPage('student');
-  updateStudentUI();
-  setTimeout(() => speakQuestion(), 600);
-}
-
-function restartStudent() {
-  if (!activeConvo) return;
-  currentQ = 0; attempt = 0;
-  document.getElementById('success-screen').classList.remove('show');
-  document.getElementById('student-main').style.display = 'flex';
-  updateStudentUI();
-  setTimeout(() => speakQuestion(), 400);
-}
-
-// ===== STUDENT UI =====
-function updateStudentUI() {
-  if (!activeConvo) return;
-  const questions = activeConvo.questions;
-  const q = questions[currentQ];
-  document.getElementById('q-label').textContent = `سؤال ${currentQ + 1} من ${questions.length}`;
-  document.getElementById('attempt-info').textContent = `المحاولة ${attempt + 1} / 3`;
-  document.getElementById('hint-content').innerHTML = q.hint || '<em>لا يوجد إرشاد لهذا السؤال</em>';
-  document.getElementById('hint-panel').classList.remove('open');
-  document.getElementById('next-btn').disabled = true;
-  const micBtn = document.getElementById('mic-btn');
-  micBtn.className = 'ctrl-btn btn-mic';
-  micBtn.textContent = '🎙 سجّل إجابتك';
-  document.getElementById('mic-status').classList.remove('show');
-  document.getElementById('progress-fill').style.width = (currentQ / questions.length * 100) + '%';
-  for (let i = 0; i < 3; i++) {
-    const dot = document.getElementById('dot' + i);
-    dot.className = 'adot';
-    if (i < attempt) dot.classList.add('used');
-    else if (i === attempt) dot.classList.add('current');
-  }
-}
-
-// ===== SPEAK =====
-function speakQuestion() {
-  if (isSpeaking || !activeConvo) return;
-  isSpeaking = true;
-  const q = activeConvo.questions[currentQ];
-  const text = q.text;
-  const bubble = document.getElementById('speech-text');
-  bubble.innerHTML = '';
-  document.getElementById('avatar-svg').classList.add('speaking');
-  document.getElementById('avatar-glow').classList.add('speaking');
-
-  // Play recorded audio if available
-  if (q.audioUrl) {
-
-    try {
-
-      const audio = new Audio(q.audioUrl);
-
-      audio.play().catch(() => {});
-
-    } catch(e) {
-
-      console.error(e);
-    }
-  }
-
-  let i = 0;
-  const typeInterval = setInterval(() => {
-    if (i <= text.length) {
-      bubble.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="typing-cursor"></span>' : '');
-      i++;
-    } else clearInterval(typeInterval);
-  }, 80);
-
-  let open = false, ticks = 0;
-  const maxTicks = Math.max(10, Math.round(text.length * 0.6));
-  mouthInterval = setInterval(() => {
-    ticks++;
-    open = !open;
-    animateMouth(open);
-    if (ticks >= maxTicks) {
-      clearInterval(mouthInterval);
-      animateMouth(false);
-      document.getElementById('avatar-svg').classList.remove('speaking');
-      document.getElementById('avatar-glow').classList.remove('speaking');
-      isSpeaking = false;
-      setTimeout(() => { document.getElementById('next-btn').disabled = false; }, 300);
-    }
-  }, 220);
-
-  blinkEyes();
-}
-
-function animateMouth(open) {
-  const outer = document.getElementById('mouth-outer');
-  const inner = document.getElementById('mouth-inner');
-  const smile = document.getElementById('mouth-smile');
-  if (open) {
-    outer.setAttribute('ry','8'); outer.setAttribute('cy','105');
-    inner.setAttribute('opacity','1'); inner.setAttribute('ry','5');
-    smile.setAttribute('opacity','0');
-  } else {
-    outer.setAttribute('ry','5'); outer.setAttribute('cy','103');
-    inner.setAttribute('opacity','0');
-    smile.setAttribute('opacity','1');
-  }
-}
-
-function blinkEyes() {
-  const pl = document.getElementById('pupil-l'), pr = document.getElementById('pupil-r');
-  setTimeout(() => {
-    pl.setAttribute('ry','1'); pr.setAttribute('ry','1');
-    setTimeout(() => { pl.removeAttribute('ry'); pr.removeAttribute('ry'); }, 120);
-  }, 800);
-}
-
-document.addEventListener('mousemove', e => {
-  const svg = document.getElementById('avatar-svg');
-  if (!svg) return;
-  const rect = svg.getBoundingClientRect();
-  const dx = (e.clientX - (rect.left + rect.width/2)) / window.innerWidth * 4;
-  const dy = (e.clientY - (rect.top + rect.height/2)) / window.innerHeight * 4;
-  document.getElementById('pupil-l').setAttribute('cx', 65 + dx);
-  document.getElementById('pupil-l').setAttribute('cy', 81 + dy);
-  document.getElementById('pupil-r').setAttribute('cx', 95 + dx);
-  document.getElementById('pupil-r').setAttribute('cy', 81 + dy);
-});
-
-// ===== CONTROLS =====
-function toggleHint() { document.getElementById('hint-panel').classList.toggle('open'); }
-function replayQuestion() { if (!isSpeaking) speakQuestion(); }
-
-async function toggleRecord() {
-
-  const btn = document.getElementById('mic-btn');
-  const micStatus = document.getElementById('mic-status');
-
-  if (isRecording) {
-
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
-    }
-
-    return;
-  }
-
-  try {
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    isRecording = true;
-    audioChunks = [];
-    micSeconds = 0;
-
-    mediaRecorder = new MediaRecorder(stream);
-
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) {
-        audioChunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = async () => {
-
-      stream.getTracks().forEach(track => track.stop());
-
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-
-      if (latestStudentAudioUrl) {
-        URL.revokeObjectURL(latestStudentAudioUrl);
-      }
-
-      latestStudentAudioUrl = URL.createObjectURL(audioBlob);
-
-      isRecording = false;
-
-      clearInterval(micTimerInterval);
-
-      micStatus.classList.remove('show');
-
-      btn.className = 'ctrl-btn btn-mic';
-
-      btn.innerHTML = '▶ تشغيل التسجيل';
-
-      btn.onclick = playStudentRecord;
-
-      document.getElementById('next-btn').disabled = false;
-    };
-
-    mediaRecorder.start();
-
-    btn.className = 'ctrl-btn btn-mic recording';
-
-    btn.textContent = '⏹ إيقاف التسجيل';
-
-    micStatus.classList.add('show');
-
-    document.getElementById('mic-timer').textContent = '0:00';
-
-    micTimerInterval = setInterval(() => {
-      micSeconds++;
-      document.getElementById('mic-timer').textContent = fmtDur(micSeconds);
-    }, 1000);
-
-  } catch (err) {
-
-    alert('يجب السماح باستخدام الميكروفون.');
-
-    console.error(err);
-  }
-}
-
-function playStudentRecord() {
-
-  if (!latestStudentAudioUrl) return;
-
-  const audio = new Audio(latestStudentAudioUrl);
-
-  const btn = document.getElementById('mic-btn');
-
-  audio.play();
-
-  btn.textContent = '⏸ إيقاف التشغيل';
-
-  audio.onended = () => {
-    btn.textContent = '▶ تشغيل التسجيل';
-    btn.onclick = playStudentRecord;
-  };
-
-  btn.onclick = () => {
-
-    if (!audio.paused) {
-      audio.pause();
-      btn.textContent = '▶ تشغيل التسجيل';
-    } else {
-      audio.play();
-      btn.textContent = '⏸ إيقاف التشغيل';
-    }
-  };
-}
-
-function simulateMicRecord(btn, micStatus) {
-  isRecording = true;
-  btn.className = 'ctrl-btn btn-mic recording';
-  btn.textContent = '⏹ إيقاف التسجيل';
-  micStatus.classList.add('show');
-  micSeconds = 0;
-  document.getElementById('mic-timer').textContent = '0:00';
-  micTimerInterval = setInterval(() => {
-    micSeconds++;
-    document.getElementById('mic-timer').textContent = fmtDur(micSeconds);
-  }, 1000);
-  recordTimer = setTimeout(() => {
-    clearInterval(micTimerInterval);
-    isRecording = false;
-    btn.className = 'ctrl-btn btn-mic';
-    btn.textContent = '✅ تم التسجيل';
-    micStatus.classList.remove('show');
-    document.getElementById('next-btn').disabled = false;
-  }, 5000);
-}
-
-function nextStep() {
-  if (!activeConvo) return;
-  const qs = activeConvo.questions;
-  attempt++;
-  if (attempt >= 3) { attempt = 0; currentQ++; }
-  if (currentQ >= qs.length) {
-    document.getElementById('student-main').style.display = 'none';
-    document.getElementById('success-screen').classList.add('show');
-    launchConfetti();
-    return;
-  }
-  updateStudentUI();
-  setTimeout(() => speakQuestion(), 400);
-}
-
-// ===== CONFETTI =====
-function launchConfetti() {
-  const colors = ['#7c6ef5','#3de0c8','#f5c842','#f5736a','#fff'];
-  for (let i = 0; i < 60; i++) {
-    const el = document.createElement('div');
-    el.style.cssText = `position:fixed;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;background:${colors[Math.floor(Math.random()*colors.length)]};top:-20px;left:${Math.random()*100}%;border-radius:${Math.random()>.5?'50%':'2px'};pointer-events:none;z-index:9999;animation:fall ${1.5+Math.random()*2}s ${Math.random()}s ease-in forwards;`;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
-  }
-}
-const fs = document.createElement('style');
-fs.textContent = `@keyframes fall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(110vh) rotate(360deg);opacity:0}}`;
-document.head.appendChild(fs);
-
-// ===== INIT =====
-
-async function loadConversations() {
-
-  try {
-
-    const snapshot = await db.collection("conversations").get();
-
-    conversations = [];
-
-    snapshot.forEach(doc => {
-
-      conversations.push({
-        id: doc.id,
-        ...doc.data()
+  
+  function gatherForm() {
+    const name = document.getElementById('convo-name').value.trim();
+    const level = document.getElementById('convo-level').value;
+    const questions = [];
+    document.getElementById('q-list').querySelectorAll('.q-item').forEach((item, i) => {
+      questions.push({
+        text: item.querySelector('.q-text-input')?.value?.trim() || '',
+        hint: item.querySelector('.q-hint-input')?.value?.trim() || '',
+        audioBlob: qRecordings[i]?.blob || null,
+        audioDuration: qRecordings[i]?.duration || null,
       });
     });
-
-    renderTeacher();
-
-  } catch (error) {
-
-    console.error(error);
+    return { name: name || 'محادثة بدون عنوان', level, avatar: selectedAvatar, questions };
   }
-}
-
-loadConversations();
-</script>
+  
+  function saveConvo() {
+    const data = gatherForm();
+    if (editingId) {
+      const idx = conversations.findIndex(c => c.id === editingId);
+      if (idx !== -1) conversations[idx] = { ...conversations[idx], ...data };
+    } else {
+      editingId = 'c_' + Date.now();
+      conversations.push({ id: editingId, ...data });
+    }
+    renderTeacher();
+    showToast('✅ تم الحفظ بنجاح');
+  }
+  
+  function saveAndPlay() {
+    const data = gatherForm();
+    if (!data.questions.some(q => q.text)) {
+      showToast('⚠️ أضف سؤالاً واحداً على الأقل قبل التشغيل');
+      return;
+    }
+    if (editingId) {
+      const idx = conversations.findIndex(c => c.id === editingId);
+      if (idx !== -1) conversations[idx] = { ...conversations[idx], ...data };
+    } else {
+      editingId = 'c_' + Date.now();
+      conversations.push({ id: editingId, ...data });
+    }
+    renderTeacher();
+    playConvo(editingId);
+  }
+  
+  // ===== STUDENT MODE =====
+  function openStudentMode() {
+    if (conversations.length === 0) {
+      showToast('⚠️ أنشئ محادثة أولاً ثم اضغط تشغيل');
+      showPage('teacher');
+      return;
+    }
+    const ready = conversations.find(c => c.questions.some(q => q.text));
+    if (ready) playConvo(ready.id);
+    else showToast('⚠️ لا توجد محادثات تحتوي على أسئلة بعد');
+  }
+  
+  function playConvo(id) {
+    const convo = conversations.find(c => c.id === id);
+    if (!convo) return;
+    const validQ = convo.questions.filter(q => q.text);
+    if (validQ.length === 0) {
+      showToast('⚠️ هذه المحادثة لا تحتوي على أسئلة بعد');
+      return;
+    }
+    activeConvo = { ...convo, questions: validQ };
+    currentQ = 0; attempt = 0;
+    document.getElementById('success-screen').classList.remove('show');
+    document.getElementById('student-main').style.display = 'flex';
+    showPage('student');
+    updateStudentUI();
+    setTimeout(() => speakQuestion(), 600);
+  }
+  
+  function restartStudent() {
+    if (!activeConvo) return;
+    currentQ = 0; attempt = 0;
+    document.getElementById('success-screen').classList.remove('show');
+    document.getElementById('student-main').style.display = 'flex';
+    updateStudentUI();
+    setTimeout(() => speakQuestion(), 400);
+  }
+  
+  function updateStudentUI() {
+    if (!activeConvo) return;
+    const questions = activeConvo.questions;
+    const q = questions[currentQ];
+    document.getElementById('q-label').textContent = `سؤال ${currentQ + 1} من ${questions.length}`;
+    document.getElementById('attempt-info').textContent = `المحاولة ${attempt + 1} / 3`;
+    document.getElementById('hint-content').innerHTML = q.hint || '<em>لا يوجد إرشاد لهذا السؤال</em>';
+    document.getElementById('hint-panel').classList.remove('open');
+    document.getElementById('next-btn').disabled = true;
+    const micBtn = document.getElementById('mic-btn');
+    micBtn.className = 'ctrl-btn btn-mic';
+    micBtn.textContent = '🎙 سجّل إجابتك';
+    document.getElementById('mic-status').classList.remove('show');
+    document.getElementById('progress-fill').style.width = (currentQ / questions.length * 100) + '%';
+    for (let i = 0; i < 3; i++) {
+      const dot = document.getElementById('dot' + i);
+      dot.className = 'adot';
+      if (i < attempt) dot.classList.add('used');
+      else if (i === attempt) dot.classList.add('current');
+    }
+  }
+  
+  // ===== SPEAK =====
+  function speakQuestion() {
+    if (isSpeaking || !activeConvo) return;
+    isSpeaking = true;
+    const q = activeConvo.questions[currentQ];
+    const text = q.text;
+    const bubble = document.getElementById('speech-text');
+    bubble.innerHTML = '';
+    document.getElementById('avatar-svg').classList.add('speaking');
+    document.getElementById('avatar-glow').classList.add('speaking');
+  
+    if (q.audioBlob) {
+      try {
+        const url = URL.createObjectURL(q.audioBlob);
+        const audio = new Audio(url);
+        audio.play().catch(() => {});
+        audio.onended = () => URL.revokeObjectURL(url);
+      } catch(e) {}
+    }
+  
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      if (i <= text.length) {
+        bubble.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="typing-cursor"></span>' : '');
+        i++;
+      } else clearInterval(typeInterval);
+    }, 80);
+  
+    let open = false, ticks = 0;
+    const maxTicks = Math.max(10, Math.round(text.length * 0.6));
+    mouthInterval = setInterval(() => {
+      ticks++;
+      open = !open;
+      animateMouth(open);
+      if (ticks >= maxTicks) {
+        clearInterval(mouthInterval);
+        animateMouth(false);
+        document.getElementById('avatar-svg').classList.remove('speaking');
+        document.getElementById('avatar-glow').classList.remove('speaking');
+        isSpeaking = false;
+        setTimeout(() => { document.getElementById('next-btn').disabled = false; }, 300);
+      }
+    }, 220);
+  
+    blinkEyes();
+  }
+  
+  function animateMouth(open) {
+    const outer = document.getElementById('mouth-outer');
+    const inner = document.getElementById('mouth-inner');
+    const smile = document.getElementById('mouth-smile');
+    if (open) {
+      outer.setAttribute('ry','8'); outer.setAttribute('cy','105');
+      inner.setAttribute('opacity','1'); inner.setAttribute('ry','5');
+      smile.setAttribute('opacity','0');
+    } else {
+      outer.setAttribute('ry','5'); outer.setAttribute('cy','103');
+      inner.setAttribute('opacity','0');
+      smile.setAttribute('opacity','1');
+    }
+  }
+  
+  function blinkEyes() {
+    const pl = document.getElementById('pupil-l'), pr = document.getElementById('pupil-r');
+    setTimeout(() => {
+      pl.setAttribute('ry','1'); pr.setAttribute('ry','1');
+      setTimeout(() => { pl.removeAttribute('ry'); pr.removeAttribute('ry'); }, 120);
+    }, 800);
+  }
+  
+  document.addEventListener('mousemove', e => {
+    const svg = document.getElementById('avatar-svg');
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const dx = (e.clientX - (rect.left + rect.width/2)) / window.innerWidth * 4;
+    const dy = (e.clientY - (rect.top + rect.height/2)) / window.innerHeight * 4;
+    document.getElementById('pupil-l').setAttribute('cx', 65 + dx);
+    document.getElementById('pupil-l').setAttribute('cy', 81 + dy);
+    document.getElementById('pupil-r').setAttribute('cx', 95 + dx);
+    document.getElementById('pupil-r').setAttribute('cy', 81 + dy);
+  });
+  
+  // ===== STUDENT CONTROLS & FIREBASE UPLOAD =====
+  function toggleHint() { document.getElementById('hint-panel').classList.toggle('open'); }
+  function replayQuestion() { if (!isSpeaking) speakQuestion(); }
+  
+  function toggleRecord() {
+    const btn = document.getElementById('mic-btn');
+    const micStatus = document.getElementById('mic-status');
+  
+    if (isRecording) {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      clearInterval(micTimerInterval);
+      isRecording = false;
+      return;
+    }
+  
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast("⚠️ الميكروفون غير مدعوم في هذا المتصفح.");
+      return;
+    }
+  
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      isRecording = true; audioChunks = []; micSeconds = 0;
+      mediaRecorder = new MediaRecorder(stream);
+      
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+      
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        micStatus.classList.remove('show');
+        btn.className = 'ctrl-btn btn-mic';
+        btn.textContent = '⏳ جاري الرفع...';
+  
+        // تكوين ملف الصوت المرفوع
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const fileName = `responses/${activeConvo.id}/q_${currentQ}_attempt_${attempt}_${Date.now()}.webm`;
+        const storageRef = ref(storage, fileName);
+  
+        // رفع الصوت إلى الفايربيز (Storage)
+        uploadBytes(storageRef, audioBlob).then((snapshot) => {
+          return getDownloadURL(snapshot.ref);
+        }).then((downloadURL) => {
+          // بعد الرفع، احفظ البيانات والروابط في قاعدة البيانات Firestore
+          return addDoc(collection(db, "student_responses"), {
+            convoId: activeConvo.id,
+            convoName: activeConvo.name,
+            questionIndex: currentQ,
+            questionText: activeConvo.questions[currentQ].text,
+            attemptNumber: attempt + 1,
+            audioUrl: downloadURL,
+            submittedAt: new Date()
+          });
+        }).then(() => {
+          btn.textContent = '✅ تم التسجيل والرفع!';
+          showToast("📥 تم إرسال إجابتك الصوتية إلى المعلم!");
+          document.getElementById('next-btn').disabled = false;
+        }).catch((error) => {
+          console.error("Firebase Error:", error);
+          btn.textContent = '🎙 سجّل إجابتك';
+          showToast("❌ خطأ أثناء الرفع، تفقد إعدادات قواعد Firebase Rules");
+        });
+      };
+  
+      mediaRecorder.start();
+      btn.className = 'ctrl-btn btn-mic recording';
+      btn.textContent = '⏹ إيقاف وحفظ';
+      micStatus.classList.add('show');
+      document.getElementById('mic-timer').textContent = '0:00';
+      micTimerInterval = setInterval(() => {
+        micSeconds++;
+        document.getElementById('mic-timer').textContent = fmtDur(micSeconds);
+      }, 1000);
+    }).catch(() => {
+      showToast("❌ لم نتمكن من الوصول للميكروفون.");
+    });
+  }
+  
+  function nextStep() {
+    if (!activeConvo) return;
+    const qs = activeConvo.questions;
+    attempt++;
+    if (attempt >= 3) { attempt = 0; currentQ++; }
+    if (currentQ >= qs.length) {
+      document.getElementById('student-main').style.display = 'none';
+      document.getElementById('success-screen').classList.add('show');
+      launchConfetti();
+      return;
+    }
+    updateStudentUI();
+    setTimeout(() => speakQuestion(), 400);
+  }
+  
+  // ===== CONFETTI =====
+  function launchConfetti() {
+    const colors = ['#7c6ef5','#3de0c8','#f5c842','#f5736a','#fff'];
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.style.cssText = `position:fixed;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;background:${colors[Math.floor(Math.random()*colors.length)]};top:-20px;left:${Math.random()*100}%;border-radius:${Math.random()>.5?'50%':'2px'};pointer-events:none;z-index:9999;animation:fall ${1.5+Math.random()*2}s ${Math.random()}s ease-in forwards;`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  }
+  const fs = document.createElement('style');
+  fs.textContent = `@keyframes fall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(110vh) rotate(360deg);opacity:0}}`;
+  document.head.appendChild(fs);
+  
+  // ربط الوظائف بـ Window لتعمل الأزرار الخارجية في HTML
+  window.showPage = showPage;
+  window.newConversation = newConversation;
+  window.openStudentMode = openStudentMode;
+  window.playConvo = playConvo;
+  window.editConvo = editConvo;
+  window.askDelete = askDelete;
+  window.clearAllConvos = clearAllConvos;
+  window.toggleQRecord = toggleQRecord;
+  window.clearQAudio = clearQAudio;
+  window.deleteQuestion = deleteQuestion;
+  window.selectChar = selectChar;
+  window.saveConvo = saveConvo;
+  window.saveAndPlay = saveAndPlay;
+  window.restartStudent = restartStudent;
+  window.toggleHint = toggleHint;
+  window.replayQuestion = replayQuestion;
+  window.toggleRecord = toggleRecord;
+  window.nextStep = nextStep;
+  window.addQuestion = addQuestion;
+  window.closeModal = closeModal;
+  window.openModal = openModal;
+  
+  renderTeacher();
+  </script>
 </body>
 </html>
