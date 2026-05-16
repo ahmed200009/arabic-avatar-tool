@@ -1242,36 +1242,65 @@ select.form-input option { background: var(--bg3); }
   window.addQuestion = addQuestion;
   window.closeModal = closeModal;
   window.openModal = openModal;
-  
-  // دالة لجلب المحادثات من الـ Firestore وعرضها في لوحة المعلم تلقائياً
-async function syncFromFirebase() {
+ // دالة الرفع والحفظ السحابي الفعلي في الفايربيز
+async function uploadConvoToFirebase(convo) {
   const sub = document.getElementById('teacher-sub');
+  if(sub) sub.textContent = "⏳ جاري رفع البيانات والملفات الصوتية إلى السحابة...";
+
   try {
-    // جلب كل المحادثات المخزنة في السحابة وترتيبها حسب وقت الإنشاء
-    const querySnapshot = await firebase.firestore().collection("conversations").orderBy("createdAt", "desc").get();
-    conversations = [];
-    
-    querySnapshot.forEach((doc) => {
-      const docData = doc.data();
-      conversations.push({
-        id: doc.id,
-        name: docData.name,
-        level: docData.level,
-        avatar: docData.avatar,
-        questions: docData.questions || []
+    // 1. مصفوفة لتخزين الأسئلة بعد تجهيز روابطها السحابية
+    const updatedQuestions = [];
+
+    // 2. الدوران على كل سؤال لرفع ملفه الصوتي إن وجد
+    for (let q of convo.questions) {
+      let audioUrl = q.audio || "";
+
+      // إذا كان السؤال يحتوي على تسجيل صوتي (Blob أو رابط محلي) نقوم برفعه إلى الـ Storage
+      if (q.audio && (q.audio.startsWith('blob:') || q.audio.startsWith('data:'))) {
+        try {
+          const response = await fetch(q.audio);
+          const blob = await response.blob();
+          
+          // إنشاء اسم فريد للملف الصوتي في الـ Storage
+          const storageRef = firebase.storage().ref().child(`audios/${Date.now()}-${Math.random().toString(36).substr(2, 5)}.wav`);
+          
+          // بدء عملية الرفع
+          const snapshot = await storageRef.put(blob);
+          // جلب الرابط السحابي النهائي للملف الصوتي
+          audioUrl = await snapshot.ref.getDownloadURL();
+        } catch (audioErr) {
+          console.error("فشل رفع الملف الصوتي لهذا السؤال، سيتم حفظ النص فقط:", audioErr);
+        }
+      }
+
+      updatedQuestions.push({
+        text: q.text || "",
+        audio: audioUrl, // الرابط السحابي الدائم
+        translation: q.translation || "",
+        hint: q.hint || ""
       });
+    }
+
+    // 3. رفع المحادثة بالكامل إلى قاعدة بيانات Firestore
+    const docRef = await firebase.firestore().collection("conversations").add({
+      name: convo.name,
+      level: convo.level,
+      avatar: convo.avatar || "avatar1",
+      questions: updatedQuestions,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp() // ترتيب زمني تلقائي
     });
+
+    console.log("تم الحفظ بنجاح في السحابة بمعرف:", docRef.id);
+    if(sub) sub.textContent = "✅ تم الحفظ السحابي بنجاح! البيانات آمنة الآن ولن تُمسح.";
     
-    // إعادة بناء القائمة أمامك لتظهر المحادثات السحابية
-    renderTeacher();
+    // تحديث القائمة محلياً بعد نجاح الرفع
+    await syncFromFirebase();
+
   } catch (error) {
-    console.error("خطأ أثناء جلب البيانات:", error);
-    if(sub) sub.textContent = "❌ فشل الاتصال بالسحابة الجلب التلقائي.";
+    console.error("خطأ حرج أثناء الحفظ السحابي:", error);
+    if(sub) sub.textContent = "❌ فشل الرفع. تأكد من تفعيل قواعد Rules في حسابك.";
   }
 }
-
-// تشغيل الجلب التلقائي بمجرد فتح الموقع
-syncFromFirebase();
   </script>
 </body>
 </html>
