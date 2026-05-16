@@ -165,9 +165,9 @@ select.form-input option { background: var(--bg3); }
 .q-text-input:focus { border-color: var(--purple); }
 .q-hint-input {
   background: rgba(61,224,200,0.04); border: 0.5px solid rgba(61,224,200,0.15);
-  border-radius: 8px; padding: 8px 12px; font-size: 13px;
-  color: var(--text2); font-family: var(--font); outline: none; width: 100%;
-  transition: border-color 0.2s; resize: vertical; line-height: 1.5; min-height: 56px;
+  border-radius: 8px; padding: 8px 12px; font-size: 14px;
+  color: var(--text); font-family: var(--font); outline: none; width: 100%;
+  transition: border-color 0.2s; resize: vertical; line-height: 1.5; min-height: 60px;
 }
 .q-hint-input:focus { border-color: var(--teal-dim); color: var(--text); }
 
@@ -311,17 +311,29 @@ select.form-input option { background: var(--bg3); }
 }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+/* إصلاح بوكس المرشد: خط واضح، تكبير الحجم، منع التآكل ومساحة مريحة */
 .hint-panel {
   max-width: 420px; width: 100%;
-  background: rgba(33,130,220,0.08); border: 0.5px solid rgba(56,150,240,0.3);
-  border-radius: 14px; padding: 16px 18px;
-  overflow: hidden; transition: all 0.3s ease;
-  max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
+  background: rgba(33,130,220,0.12); border: 1px solid rgba(56,150,240,0.4);
+  border-radius: 14px; padding: 18px;
+  overflow-y: auto; transition: all 0.3s ease;
+  max-height: 0; opacity: 0;
 }
-.hint-panel.open { max-height: 200px; opacity: 1; padding: 16px 18px; }
-.hint-label { font-size: 11px; font-weight: 800; color: #5bb8f5; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-.hint-content { font-size: 14px; color: #a8d4f5; line-height: 1.7; direction: ltr; text-align: left; }
-.hint-content strong { color: white; }
+.hint-panel.open { max-height: 350px; opacity: 1; }
+.hint-label { font-size: 13px; font-weight: 800; color: #5bb8f5; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.hint-content { font-size: 17px; font-weight: 600; color: #f0f7fc; line-height: 1.8; text-align: right; }
+.hint-content strong { color: #f5c842; }
+
+.lang-selector {
+  background: var(--bg2); color: var(--text); border: 0.5px solid var(--border-purple);
+  padding: 4px 8px; border-radius: 8px; font-family: var(--font); font-size: 12px; outline: none; cursor: pointer;
+}
+
+.hint-audio-btn {
+  background: rgba(245,200,66,0.15); color: var(--amber); border: 0.5px solid rgba(245,200,66,0.3);
+  padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font);
+}
+.hint-audio-btn:hover { background: var(--amber); color: var(--bg); }
 
 .student-controls { max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .ctrl-row { display: flex; gap: 10px; }
@@ -418,11 +430,10 @@ select.form-input option { background: var(--bg3); }
 <div class="stars-bg" id="stars"></div>
 <div class="toast" id="toast">✅ تم الحفظ</div>
 
-<!-- Delete Modal -->
 <div class="modal-overlay" id="delete-modal">
   <div class="modal">
-    <div class="modal-title">🗑 حذف المحادثة</div>
-    <div class="modal-sub">هل أنت متأكد من حذف هذه المحادثة؟ لا يمكن التراجع عن هذا الإجراء.</div>
+    <div class="modal-title">🗑 حذف المحادثة السحابية</div>
+    <div class="modal-sub">هل أنت متأكد من حذف هذه المحادثة نهائياً من السحابة؟ لا يمكن التراجع.</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('delete-modal')">إلغاء</button>
       <button class="btn-danger" id="confirm-delete-btn">حذف نهائياً</button>
@@ -430,11 +441,10 @@ select.form-input option { background: var(--bg3); }
   </div>
 </div>
 
-<!-- Clear All Modal -->
 <div class="modal-overlay" id="clear-all-modal">
   <div class="modal">
-    <div class="modal-title">⚠️ مسح جميع المحادثات</div>
-    <div class="modal-sub">سيتم حذف جميع المحادثات المحفوظة نهائياً. هل أنت متأكد؟</div>
+    <div class="modal-title">⚠️ مسح كل المحادثات السحابية</div>
+    <div class="modal-sub">سيتم مسح جميع المحادثات المخزنة سحابياً بشكل كامل ونهائي. هل أنت متأكد؟</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('clear-all-modal')">إلغاء</button>
       <button class="btn-danger" onclick="clearAllConvos()">مسح الكل</button>
@@ -452,12 +462,11 @@ select.form-input option { background: var(--bg3); }
     </div>
   </nav>
 
-  <!-- ========= TEACHER PAGE ========= -->
   <div id="page-teacher" class="page active">
     <div class="page-header">
       <div>
-        <div class="page-title">محادثاتي</div>
-        <div class="page-sub" id="teacher-sub">لا توجد محادثات بعد</div>
+        <div class="page-title">محادثاتي السحابية</div>
+        <div class="page-sub" id="teacher-sub">⏳ جاري تحميل الدروس من السحابة...</div>
       </div>
       <div class="header-actions">
         <button id="clear-all-btn" class="btn-danger-outline" onclick="openModal('clear-all-modal')" style="display:none; font-size:13px; padding:9px 16px;">🗑 مسح الكل</button>
@@ -471,12 +480,11 @@ select.form-input option { background: var(--bg3); }
     </div>
   </div>
 
-  <!-- ========= CREATE PAGE ========= -->
   <div id="page-create" class="page">
     <div class="page-header">
       <div>
         <div class="page-title" id="create-page-title">إنشاء محادثة جديدة</div>
-        <div class="page-sub">أضف أسئلتك وإرشادات الإجابة</div>
+        <div class="page-sub">أضف أسئلتك وإرشادات الإجابة الصوتية</div>
       </div>
     </div>
 
@@ -505,18 +513,16 @@ select.form-input option { background: var(--bg3); }
       <div class="char-pick" onclick="selectChar(this,'👩‍🏫')" data-char="👩‍🏫">👩‍🏫</div>
     </div>
 
-    <div class="section-title">🎙 الأسئلة</div>
+    <div class="section-title">🎙 الأسئلة والإرشادات الصوتية</div>
     <div class="q-list" id="q-list"></div>
     <button class="add-q-btn" onclick="addQuestion()">+ إضافة سؤال جديد</button>
 
     <div class="form-actions">
       <button class="btn-cancel" onclick="showPage('teacher')">إلغاء</button>
-      <button class="btn-save" onclick="saveConvo()">💾 حفظ</button>
-      <button class="btn-play-now" onclick="saveAndPlay()">▶ حفظ وتشغيل</button>
+      <button class="btn-save" onclick="saveConvo()">💾 حفظ سحابي</button>
     </div>
   </div>
 
-  <!-- ========= STUDENT PAGE ========= -->
   <div id="page-student" class="page">
 
     <div id="success-screen">
@@ -559,7 +565,6 @@ select.form-input option { background: var(--bg3); }
           <ellipse cx="80" cy="138" rx="40" ry="28" fill="url(#bodyGrad)" opacity="0.9"/>
           <rect x="70" y="104" width="20" height="18" rx="6" fill="url(#headGrad)"/>
           <ellipse cx="80" cy="82" rx="38" ry="42" fill="url(#headGrad)"/>
-          <!-- hair (changes per avatar) -->
           <g id="avatar-hair">
             <ellipse cx="80" cy="46" rx="38" ry="18" fill="#3a2010"/>
             <ellipse cx="80" cy="52" rx="34" ry="10" fill="#3a2010"/>
@@ -592,7 +597,18 @@ select.form-input option { background: var(--bg3); }
       </div>
 
       <div class="hint-panel" id="hint-panel">
-        <div class="hint-label">🔍 إرشاد الإجابة</div>
+        <div class="hint-label">
+          <span>🔍 إرشاد الإجابة والترجمة</span>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button class="hint-audio-btn" id="hint-listen-btn" onclick="playHintAudio()">🔊 سماع الإرشاد</button>
+            <select class="lang-selector" id="lang-select" onchange="changeLanguage()">
+              <option value="en">English (الإنجليزية)</option>
+              <option value="ko">한국어 (الكورية)</option>
+              <option value="es">Español (الإسبانية)</option>
+              <option value="de">Deutsch (الألمانية)</option>
+            </select>
+          </div>
+        </div>
         <div class="hint-content" id="hint-content"></div>
       </div>
 
@@ -606,14 +622,14 @@ select.form-input option { background: var(--bg3); }
         <div class="mic-wave">
           <span></span><span></span><span></span><span></span><span></span>
         </div>
-        <span>جارٍ التسجيل...</span>
+        <span>جارٍ التسجيل الفوري...</span>
         <span id="mic-timer" style="margin-right:auto;opacity:0.7;font-size:12px;">0:00</span>
       </div>
 
       <div class="student-controls">
         <div class="ctrl-row">
-          <button class="ctrl-btn btn-hint" onclick="toggleHint()">💡 أريد أن أفهم</button>
-          <button class="ctrl-btn btn-replay" onclick="replayQuestion()">🔊 إعادة السماع</button>
+          <button class="ctrl-btn btn-hint" onclick="toggleHint()">💡 أريد أن أفهم (المرشد)</button>
+          <button class="ctrl-btn btn-replay" onclick="replayQuestion()">🔊 إعادة سؤال الأفاتار</button>
         </div>
         <div class="ctrl-row">
           <button class="ctrl-btn btn-mic" id="mic-btn" onclick="toggleRecord()">🎙 سجّل إجابتك</button>
@@ -627,15 +643,11 @@ select.form-input option { background: var(--bg3); }
   </div>
 
 </div>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-<script type="module">
-// 1. استدعاء خدمات Firebase الأساسية والمجانية فقط
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// 2. مفاتيح مشروعك الحقيقية
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, orderBy, query, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyA7AJLA35DFXpYQoyl20jiieuatcJ9rdd8",
   authDomain: "arabic-avatar-tool.firebaseapp.com",
@@ -665,16 +677,21 @@ let conversations = [];
 let editingId = null;
 let selectedAvatar = '🧑';
 let pendingDeleteId = null;
-let qRecordings = {}; 
+let qRecordings = {}; // {index: {qAudioData, hintAudioData, duration}}
 
+// Student
 let activeConvo = null;
 let currentQ = 0, attempt = 0;
 let isSpeaking = false, isRecording = false;
-let mouthInterval = null, recordTimer = null;
+let mouthInterval = null;
 let micTimerInterval = null, micSeconds = 0;
 let mediaRecorder = null, audioChunks = [];
 
-// دالة تحويل ملف الصوت إلى نص مشفر لحفظه مجاناً في Firestore
+// مرآة الصوت المحلية للطالب
+let studentAudioUrl = null;
+let studentAudioInstance = null;
+let hintAudioInstance = null;
+
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -707,7 +724,7 @@ function showToast(msg, dur = 2800) {
   setTimeout(() => t.classList.remove('show'), dur);
 }
 
-// ===== JALB AL-DATA MIN FIREBASE =====
+// ===== SYNC FROM FIREBASE (جلب وتحديث سحابي دائم) =====
 async function syncFromFirebase() {
   const sub = document.getElementById('teacher-sub');
   try {
@@ -726,7 +743,7 @@ async function syncFromFirebase() {
     renderTeacher();
   } catch (error) {
     console.error(error);
-    if(sub) sub.textContent = "❌ خطأ في جلب البيانات.";
+    if(sub) sub.textContent = "❌ خطأ في الاتصال بقاعدة البيانات السحابية.";
   }
 }
 
@@ -741,7 +758,7 @@ function renderTeacher() {
 
   if (conversations.length === 0) {
     noConvos.style.display = 'block';
-    sub.textContent = 'لا توجد محادثات سحابية بعد';
+    sub.textContent = 'لا توجد محادثات سحابية محفوظة';
     clearBtn.style.display = 'none';
     return;
   }
@@ -749,7 +766,7 @@ function renderTeacher() {
   noConvos.style.display = 'none';
   clearBtn.style.display = 'inline-flex';
   const done = conversations.filter(c => c.questions.length > 0 && c.questions.some(q => q.text)).length;
-  sub.textContent = `${conversations.length} محادثة · ${done} جاهزة للتشغيل`;
+  sub.textContent = `${conversations.length} محادثة سحابية حية · ${done} جاهزة`;
 
   conversations.forEach(convo => {
     const hasQ = convo.questions.length > 0 && convo.questions.some(q => q.text && q.text.trim());
@@ -765,29 +782,42 @@ function renderTeacher() {
       <div class="card-actions">
         <button class="icon-btn icon-btn-play" title="تشغيل" onclick="playConvo('${convo.id}')">▶</button>
         <button class="icon-btn icon-btn-edit" title="تعديل" onclick="editConvo('${convo.id}')">✎</button>
-        <button class="icon-btn icon-btn-delete" title="حذف" onclick="askDelete('${convo.id}')">🗑</button>
+        <button class="icon-btn icon-btn-delete" title="حذف نهائي" onclick="askDelete('${convo.id}')">🗑</button>
       </div>
     `;
     grid.appendChild(card);
   });
 }
 
+// الحذف الحقيقي الدائم من سحابة الفايربيز
 function askDelete(id) {
   pendingDeleteId = id;
-  document.getElementById('confirm-delete-btn').onclick = () => {
-    conversations = conversations.filter(c => c.id !== pendingDeleteId);
-    closeModal('delete-modal');
-    renderTeacher();
-    showToast('🗑 تم حذف المحادثة');
+  document.getElementById('confirm-delete-btn').onclick = async () => {
+    try {
+      await deleteDoc(doc(db, "conversations", pendingDeleteId));
+      closeModal('delete-modal');
+      await syncFromFirebase();
+      showToast('🗑 تم حذف المحادثة تماماً من السحابة');
+    } catch(err) {
+      alert("فشل الحذف السحابي: " + err.message);
+    }
   };
   openModal('delete-modal');
 }
 
-function clearAllConvos() {
-  conversations = [];
-  closeModal('clear-all-modal');
-  renderTeacher();
-  showToast('🗑 تم مسح جميع المحادثات');
+// مسح كافة المحادثات من السحابة دفعة واحدة
+async function clearAllConvos() {
+  try {
+    const qSnapshot = await getDocs(collection(db, "conversations"));
+    for (let documentDoc of qSnapshot.docs) {
+      await deleteDoc(doc(db, "conversations", documentDoc.id));
+    }
+    closeModal('clear-all-modal');
+    await syncFromFirebase();
+    showToast('🗑 تم تفريغ ومسح السحابة بالكامل');
+  } catch(err) {
+    alert("حدث خطأ أثناء مسح الكل: " + err.message);
+  }
 }
 
 // ===== CREATE PAGE =====
@@ -808,7 +838,7 @@ function editConvo(id) {
   if (!convo) return;
   editingId = id;
   selectedAvatar = convo.avatar;
-  document.getElementById('create-page-title').textContent = 'تعديل المحادثة';
+  document.getElementById('create-page-title').textContent = 'تعديل الدرس السحابي';
   document.getElementById('convo-name').value = convo.name;
   document.getElementById('convo-level').value = convo.level;
   document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === convo.avatar));
@@ -816,39 +846,48 @@ function editConvo(id) {
   document.getElementById('q-list').innerHTML = '';
   
   convo.questions.forEach((q, i) => {
-    if (q.audioData) qRecordings[i] = { audioData: q.audioData, duration: q.audioDuration };
-    addQuestionEl(i, q.text, q.hint, !!q.audioData, q.audioDuration);
+    qRecordings[i] = { qAudioData: q.qAudioData || null, hintAudioData: q.hintAudioData || null, duration: q.audioDuration };
+    addQuestionEl(i, q, !!q.qAudioData, !!q.hintAudioData);
   });
   showPage('create');
 }
 
 function addQuestion() {
   const i = document.getElementById('q-list').children.length;
-  addQuestionEl(i, '', '', false, null);
+  addQuestionEl(i, {text:'', hint_en:'', hint_ko:'', hint_es:'', hint_de:''}, false, false);
 }
 
-function addQuestionEl(i, text, hint, hasAudio, audioDuration) {
+function addQuestionEl(i, qData, hasQAudio, hasHintAudio) {
   const list = document.getElementById('q-list');
   const item = document.createElement('div');
   item.className = 'q-item';
   item.dataset.index = i;
 
-  const audioHtml = hasAudio
-    ? `<button class="rec-btn done" onclick="toggleQRecord(${i},this)">🔊 مسجّل سحابياً · ${fmtDur(audioDuration)}</button>
-       <button class="audio-clear-btn" onclick="clearQAudio(${i},this)">✕ مسح الصوت</button>`
-    : `<button class="rec-btn idle" onclick="toggleQRecord(${i},this)">⏺ سجّل الآن</button>`;
+  const qAudioHtml = hasQAudio
+    ? `<button class="rec-btn done" onclick="toggleQRecord(${i}, 'q', this)">🔊 صوت السؤال جاهز</button>`
+    : `<button class="rec-btn idle" onclick="toggleQRecord(${i}, 'q', this)">⏺ سجل صوت الأفاتار</button>`;
+
+  const hintAudioHtml = hasHintAudio
+    ? `<button class="rec-btn done" onclick="toggleQRecord(${i}, 'hint', this)">🔊 صوت المرشد جاهز</button>`
+    : `<button class="rec-btn idle" onclick="toggleQRecord(${i}, 'hint', this)">⏺ سجل صوت المرشد (اختياري)</button>`;
 
   item.innerHTML = `
     <div class="q-top">
       <span class="q-label">سؤال ${i + 1}</span>
-      <div class="q-top-left">
-        ${audioHtml}
+      <div class="q-top-left" style="gap:10px; display:flex;">
+        ${qAudioHtml}
+        ${hintAudioHtml}
         <button class="q-delete-btn" onclick="deleteQuestion(this)" title="حذف السؤال">✕</button>
       </div>
     </div>
     <div class="q-edit-row">
-      <input class="q-text-input" placeholder="نص السؤال الذي سيقوله الأفاتار..." value="${escHtml(text)}">
-      <textarea class="q-hint-input" rows="2" placeholder="إرشاد الإجابة للطالب (اختياري)...">${escHtml(hint)}</textarea>
+      <input class="q-text-input" placeholder="نص السؤال باللغة العربية..." value="${escHtml(qData.text)}">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+        <textarea class="q-hint-input" rows="2" id="hint-en-${i}" placeholder="معلومات المرشد بالإنجليزية (English)...">${escHtml(qData.hint_en)}</textarea>
+        <textarea class="q-hint-input" rows="2" id="hint-ko-${i}" placeholder="معلومات المرشد بالكورية (한국어)...">${escHtml(qData.hint_ko)}</textarea>
+        <textarea class="q-hint-input" rows="2" id="hint-es-${i}" placeholder="معلومات المرشد بالإسبانية (Español)...">${escHtml(qData.hint_es)}</textarea>
+        <textarea class="q-hint-input" rows="2" id="hint-de-${i}" placeholder="معلومات المرشد بالألمانية (Deutsch)...">${escHtml(qData.hint_de)}</textarea>
+      </div>
     </div>
   `;
   list.appendChild(item);
@@ -883,27 +922,17 @@ function selectChar(el, char) {
   selectedAvatar = char;
 }
 
-function escHtml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function fmtDur(sec) {
-  if (!sec && sec !== 0) return '0:00';
-  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
-  return `${m}:${s.toString().padStart(2,'0')}`;
-}
-
-// ===== AUDIO RECORDING =====
-function toggleQRecord(i, btn) {
+// ===== AUDIO RECORDING FOR TEACHER =====
+function toggleQRecord(i, type, btn) {
   if (btn.classList.contains('recording')) {
-    if (qRecordings[i]?.mediaRecorder && qRecordings[i].mediaRecorder.state !== 'inactive') {
-      qRecordings[i].mediaRecorder.stop();
+    if (qRecordings[i]?.[type + 'Recorder'] && qRecordings[i][type + 'Recorder'].state !== 'inactive') {
+      qRecordings[i][type + 'Recorder'].stop();
     }
     return;
   }
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    alert('المتصفح لا يدعم التسجيل الصوتي.');
+    alert('المتصفح لا يدعم التسجيل.');
     return;
   }
 
@@ -911,50 +940,32 @@ function toggleQRecord(i, btn) {
     if (!qRecordings[i]) qRecordings[i] = {};
     const mr = new MediaRecorder(stream);
     const chunks = [];
-    const t0 = Date.now();
-    qRecordings[i].mediaRecorder = mr;
+    qRecordings[i][type + 'Recorder'] = mr;
 
     mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
     mr.onstop = async () => {
       stream.getTracks().forEach(t => t.stop());
       const blob = new Blob(chunks, { type: 'audio/webm' });
-      const dur = (Date.now() - t0) / 1000;
-      
-      // تحويل الصوت إلى نص لحفظه مجاناً
       const base64Audio = await blobToBase64(blob);
-      qRecordings[i].audioData = base64Audio;
-      qRecordings[i].duration = dur;
+      
+      if (type === 'q') qRecordings[i].qAudioData = base64Audio;
+      else qRecordings[i].hintAudioData = base64Audio;
 
       btn.className = 'rec-btn done';
-      btn.textContent = `🔊 مسجّل · ${fmtDur(dur)}`;
-
-      const parent = btn.parentElement;
-      if (!parent.querySelector('.audio-clear-btn')) {
-        const cb = document.createElement('button');
-        cb.className = 'audio-clear-btn';
-        cb.textContent = '✕ مسح الصوت';
-        cb.onclick = () => clearQAudio(i, cb);
-        btn.after(cb);
-      }
+      btn.textContent = type === 'q' ? '🔊 صوت السؤال جاهز' : '🔊 صوت المرشد جاهز';
     };
 
     mr.start();
     btn.className = 'rec-btn recording';
-    btn.textContent = '⏹ إيقاف التسجيل';
+    btn.textContent = '⏹ إيقاف الحفظ';
   }).catch(() => {
-    alert('تأكد من منح إذن الميكروفون للمتصفح.');
+    alert('تأكد من تفعيل إذن الميكروفون.');
   });
 }
 
 function clearQAudio(i, btn) {
-  if (qRecordings[i]) { qRecordings[i].audioData = null; qRecordings[i].duration = null; }
-  const parent = btn.parentElement;
-  const recBtn = parent.querySelector('.rec-btn');
-  if (recBtn) {
-    recBtn.className = 'rec-btn idle';
-    recBtn.textContent = '⏺ سجّل الآن';
-  }
-  btn.remove();
+  if (qRecordings[i]) { qRecordings[i].qAudioData = null; qRecordings[i].hintAudioData = null; }
+  reindexQuestions();
 }
 
 function gatherForm() {
@@ -964,18 +975,21 @@ function gatherForm() {
   document.getElementById('q-list').querySelectorAll('.q-item').forEach((item, i) => {
     questions.push({
       text: item.querySelector('.q-text-input')?.value?.trim() || '',
-      hint: item.querySelector('.q-hint-input')?.value?.trim() || '',
-      audioData: qRecordings[i]?.audioData || null,
-      audioDuration: qRecordings[i]?.duration || null,
+      hint_en: document.getElementById(`hint-en-${i}`)?.value?.trim() || '',
+      hint_ko: document.getElementById(`hint-ko-${i}`)?.value?.trim() || '',
+      hint_es: document.getElementById(`hint-es-${i}`)?.value?.trim() || '',
+      hint_de: document.getElementById(`hint-de-${i}`)?.value?.trim() || '',
+      qAudioData: qRecordings[i]?.qAudioData || null,
+      hintAudioData: qRecordings[i]?.hintAudioData || null
     });
   });
-  return { name: name || 'محادثة بدون عنوان', level, avatar: selectedAvatar, questions };
+  return { name: name || 'محادثة سحابية', level, avatar: selectedAvatar, questions };
 }
 
-// ===== SINO AL-HIFZ AL-SABABI AL-MAJANI =====
+// الحفظ السحابي المجاني الكامل والشامل
 async function saveConvo() {
   const btnSave = document.querySelector('.btn-save');
-  btnSave.textContent = '⏳ جاري الحفظ مجاناً...';
+  btnSave.textContent = '⏳ جاري الرفع المباشر...';
   btnSave.disabled = true;
 
   try {
@@ -988,15 +1002,14 @@ async function saveConvo() {
       createdAt: new Date()
     };
 
-    // حفظ النصوص والصوتيات معاً داخل قاعدة البيانات Firestore مجاناً
     await addDoc(collection(db, "conversations"), docData);
 
-    showToast('✅ تم الحفظ السحابي المجاني بنجاح!');
+    showToast('✅ تم النشر والحفظ السحابي بنجاح!');
     await syncFromFirebase();
     showPage('teacher');
   } catch (error) {
     console.error(error);
-    alert("حدث خطأ أثناء الحفظ: " + error.message);
+    alert("حدث خطأ أثناء الحفظ السحابي: " + error.message);
   } finally {
     btnSave.textContent = '💾 حفظ سحابي';
     btnSave.disabled = false;
@@ -1004,11 +1017,6 @@ async function saveConvo() {
 }
 
 async function saveAndPlay() {
-  const data = gatherForm();
-  if (!data.questions.some(q => q.text)) {
-    showToast('⚠️ أضف سؤالاً واحداً على الأقل قبل التشغيل');
-    return;
-  }
   await saveConvo();
 }
 
@@ -1051,12 +1059,30 @@ function updateStudentUI() {
   const q = questions[currentQ];
   document.getElementById('q-label').textContent = `سؤال ${currentQ + 1} من ${questions.length}`;
   document.getElementById('attempt-info').textContent = `المحاولة ${attempt + 1} / 3`;
-  document.getElementById('hint-content').innerHTML = q.hint || '<em>لا يوجد إرشاد لهذا السؤال</em>';
+  
+  // استرجاع آخر لغة اختارها الطالب للحفاظ على رغبته
+  const lastLang = localStorage.getItem('student_lang') || 'en';
+  document.getElementById('lang-select').value = lastLang;
+
+  changeLanguage(); // تحديث محتوى البوكس بناء على اللغة
+
+  // تجهيز زر صوت المرشد بناء على وجود تسجيل صوتي من المعلم
+  const listenBtn = document.getElementById('hint-listen-btn');
+  if (q.hintAudioData) {
+    listenBtn.style.display = 'inline-block';
+    listenBtn.textContent = '🔊 سماع الإرشاد';
+  } else {
+    listenBtn.style.display = 'none'; // كتم وإخفاء الزر إن لم يسجل المعلم صوتاً للإرشاد
+  }
+
   document.getElementById('hint-panel').classList.remove('open');
   document.getElementById('next-btn').disabled = true;
+  
   const micBtn = document.getElementById('mic-btn');
   micBtn.className = 'ctrl-btn btn-mic';
   micBtn.textContent = '🎙 سجّل إجابتك';
+  micBtn.style.background = ''; micBtn.style.color = '';
+  
   document.getElementById('mic-status').classList.remove('show');
   document.getElementById('progress-fill').style.width = (currentQ / questions.length * 100) + '%';
   for (let i = 0; i < 3; i++) {
@@ -1067,7 +1093,48 @@ function updateStudentUI() {
   }
 }
 
-// ===== SPEAK AND AUDIO PLAYBACK =====
+// دالة تغيير لغة الإرشاد وحفظ التفضيل الأخير في الـ LocalStorage
+function changeLanguage() {
+  if (!activeConvo) return;
+  const q = activeConvo.questions[currentQ];
+  const lang = document.getElementById('lang-select').value;
+  
+  // حفظ آخر لغة اختارها الطالب لكي تفتح معه دائماً تلقائياً
+  localStorage.setItem('student_lang', lang);
+
+  let hintText = '';
+  if (lang === 'en') hintText = q.hint_en || '<em>No guide available in English</em>';
+  else if (lang === 'ko') hintText = q.hint_ko || '<em>영어 가이드가 없습니다</em>';
+  else if (lang === 'es') hintText = q.hint_es || '<em>No hay guía disponible en español</em>';
+  else if (lang === 'de') hintText = q.hint_de || '<em>Kein Leitfaden auf Deutsch verfügbar</em>';
+
+  document.getElementById('hint-content').innerHTML = hintText;
+}
+
+// دالة تشغيل وإيقاف صوت الإرشاد (المرشد الاختياري)
+function playHintAudio() {
+  if (!activeConvo) return;
+  const q = activeConvo.questions[currentQ];
+  const listenBtn = document.getElementById('hint-listen-btn');
+
+  if (hintAudioInstance && !hintAudioInstance.paused) {
+    hintAudioInstance.pause();
+    hintAudioInstance.currentTime = 0;
+    listenBtn.textContent = '🔊 سماع الإرشاد';
+    return;
+  }
+
+  if (q.hintAudioData) {
+    hintAudioInstance = new Audio(q.hintAudioData);
+    listenBtn.textContent = '⏸ إيقاف الصوت';
+    hintAudioInstance.play().catch(() => {});
+    hintAudioInstance.onended = () => {
+      listenBtn.textContent = '🔊 سماع الإرشاد';
+    };
+  }
+}
+
+// ===== SPEAK =====
 function speakQuestion() {
   if (isSpeaking || !activeConvo) return;
   isSpeaking = true;
@@ -1078,10 +1145,9 @@ function speakQuestion() {
   document.getElementById('avatar-svg').classList.add('speaking');
   document.getElementById('avatar-glow').classList.add('speaking');
 
-  // تشغيل الصوت المسترجع مجاناً من قاعدة البيانات السحابية
-  if (q.audioData) {
+  if (q.qAudioData) {
     try {
-      const audio = new Audio(q.audioData);
+      const audio = new Audio(q.qAudioData);
       audio.play().catch(() => {});
     } catch(e) {}
   }
@@ -1148,7 +1214,7 @@ document.addEventListener('mousemove', e => {
   document.getElementById('pupil-r').setAttribute('cy', 81 + dy);
 });
 
-// ===== STUDENT MIC RECORDING =====
+// ===== STUDENT MIC LOCAL RECORDING (المرآة الصوتية الحية) =====
 function toggleHint() { document.getElementById('hint-panel').classList.toggle('open'); }
 function replayQuestion() { if (!isSpeaking) speakQuestion(); }
 
@@ -1163,6 +1229,26 @@ function toggleRecord() {
     return;
   }
 
+  if (btn.classList.contains('playing-audio')) {
+    if (studentAudioInstance) { studentAudioInstance.pause(); studentAudioInstance.currentTime = 0; }
+    btn.className = 'ctrl-btn btn-mic has-audio-ready';
+    btn.textContent = '🔊 تشغيل واستماع لتسجيلك';
+    btn.classList.remove('playing-audio');
+    return;
+  }
+
+  if (btn.classList.contains('has-audio-ready') && studentAudioUrl) {
+    studentAudioInstance = new Audio(studentAudioUrl);
+    btn.className = 'ctrl-btn btn-mic recording playing-audio';
+    btn.textContent = '⏹ إيقاف سماع صوتك';
+    studentAudioInstance.play().catch(() => {});
+    studentAudioInstance.onended = () => {
+      btn.className = 'ctrl-btn btn-mic has-audio-ready';
+      btn.textContent = '🔊 تشغيل واستماع لتسجيلك';
+    };
+    return;
+  }
+
   if (!navigator.mediaDevices?.getUserMedia) {
     showToast("⚠️ الميكروفون غير مدعوم.");
     return;
@@ -1171,40 +1257,26 @@ function toggleRecord() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     isRecording = true; audioChunks = []; micSeconds = 0;
     mediaRecorder = new MediaRecorder(stream);
-    
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     
-    mediaRecorder.onstop = async () => {
+    mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
       micStatus.classList.remove('show');
-      btn.className = 'ctrl-btn btn-mic';
-      btn.textContent = '⏳ جاري المزامنة...';
-
+      
       const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      const base64StudentAudio = await blobToBase64(audioBlob);
-
-      // حفظ إجابة الطالب الصوتية مجاناً في جدول خاص بـ Firestore دون الحاجة لـ Storage
-      try {
-        await addDoc(collection(db, "student_responses"), {
-          convoId: activeConvo.id,
-          convoName: activeConvo.name,
-          questionIndex: currentQ,
-          attemptNumber: attempt + 1,
-          audioData: base64StudentAudio,
-          submittedAt: new Date()
-        });
-        btn.textContent = '✅ تم الحفظ سحابياً!';
-        showToast("📥 تم إرسال إجابتك الصوتية بنجاح!");
-        document.getElementById('next-btn').disabled = false;
-      } catch (err) {
-        btn.textContent = '🎙 سجّل إجابتك';
-        showToast("❌ فشل الإرسال، تحقق من الاتصال.");
-      }
+      studentAudioUrl = URL.createObjectURL(audioBlob);
+      
+      btn.className = 'ctrl-btn btn-mic has-audio-ready';
+      btn.textContent = '🔊 تشغيل واستماع لتسجيلك';
+      btn.style.background = 'rgba(61,224,200,0.15)';
+      btn.style.color = 'var(--teal)';
+      
+      document.getElementById('next-btn').disabled = false;
     };
 
     mediaRecorder.start();
     btn.className = 'ctrl-btn btn-mic recording';
-    btn.textContent = '⏹ إيقاف وحفظ';
+    btn.textContent = '⏹ إيقاف وحفظ التسجيل';
     micStatus.classList.add('show');
     document.getElementById('mic-timer').textContent = '0:00';
     micTimerInterval = setInterval(() => {
@@ -1218,6 +1290,12 @@ function toggleRecord() {
 
 function nextStep() {
   if (!activeConvo) return;
+  
+  // تصفير وإيقاف أي أصوات سابقة للطالب أو الإرشاد عند الانتقال
+  studentAudioUrl = null;
+  if (studentAudioInstance) { studentAudioInstance.pause(); studentAudioInstance = null; }
+  if (hintAudioInstance) { hintAudioInstance.pause(); hintAudioInstance = null; }
+
   const qs = activeConvo.questions;
   attempt++;
   if (attempt >= 3) { attempt = 0; currentQ++; }
@@ -1231,7 +1309,6 @@ function nextStep() {
   setTimeout(() => speakQuestion(), 400);
 }
 
-// ===== CONFETTI =====
 function launchConfetti() {
   const colors = ['#7c6ef5','#3de0c8','#f5c842','#f5736a','#fff'];
   for (let i = 0; i < 60; i++) {
@@ -1245,7 +1322,7 @@ const fs = document.createElement('style');
 fs.textContent = `@keyframes fall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(110vh) rotate(360deg);opacity:0}}`;
 document.head.appendChild(fs);
 
-// ربط الوظائف بـ Window
+// ربط الدوال بـ Window
 window.showPage = showPage;
 window.newConversation = newConversation;
 window.openStudentMode = openStudentMode;
@@ -1267,8 +1344,9 @@ window.nextStep = nextStep;
 window.addQuestion = addQuestion;
 window.closeModal = closeModal;
 window.openModal = openModal;
+window.changeLanguage = changeLanguage;
+window.playHintAudio = playHintAudio;
 
-// بدء الجلب التلقائي المجاني فور التشغيل
 syncFromFirebase();
 </script>
 </body>
