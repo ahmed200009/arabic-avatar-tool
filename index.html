@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أداة المحادثة عبر الأفاتار</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0e17;
+  --bg2: #1a1829;
+  --bg3: #22203a;
+  --purple: #7c6ef5;
+  --purple-light: #a89bf8;
+  --purple-dark: #4a3fc0;
+  --teal: #3de0c8;
+  --teal-dim: #1a8a7a;
+  --amber: #f5c842;
+  --coral: #f5736a;
+  --red: #e53935;
+  --text: #f0eeff;
+  --text2: #9b95c9;
+  --card: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --border-purple: rgba(124,110,245,0.4);
+  --font: 'Tajawal', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(124,110,245,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(61,224,200,0.08) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+#app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 0 60px; }
+
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px; border-bottom: 0.5px solid var(--border);
+  backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100;
+  background: rgba(15,14,23,0.85);
+}
+.nav-logo { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px; }
+.nav-logo span { color: var(--purple-light); }
+.tabs { display: flex; gap: 4px; background: var(--bg3); padding: 4px; border-radius: 12px; border: 0.5px solid var(--border); }
+.tab-btn {
+  padding: 8px 18px; border-radius: 9px; font-size: 14px; font-weight: 600;
+  font-family: var(--font); cursor: pointer; border: none;
+  color: var(--text2); background: transparent; transition: all 0.2s;
+}
+.tab-btn.active { background: var(--purple); color: white; }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+.page { display: none; padding: 28px; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* ===== TEACHER PAGE ===== */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.page-title { font-size: 22px; font-weight: 800; }
+.page-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+.btn-new {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--purple); color: white; border: none;
+  padding: 11px 20px; border-radius: 12px; font-size: 14px; font-weight: 700;
+  font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.btn-new:hover { background: var(--purple-light); transform: translateY(-1px); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.convo-grid { display: flex; flex-direction: column; gap: 12px; }
+.convo-card {
+  background: var(--card); border: 0.5px solid var(--border);
+  border-radius: 16px; padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  transition: all 0.2s;
+}
+.convo-card:hover { border-color: var(--border-purple); background: rgba(124,110,245,0.06); }
+.avatar-thumb {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--bg3); display: flex; align-items: center;
+  justify-content: center; font-size: 26px; border: 2px solid var(--border-purple);
+  flex-shrink: 0;
+}
+.convo-info { flex: 1; min-width: 0; }
+.convo-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-meta { font-size: 12px; color: var(--text2); }
+.badge {
+  font-size: 11px; font-weight: 600; padding: 4px 10px;
+  border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+}
+.badge-done { background: rgba(61,224,200,0.12); color: var(--teal); border: 0.5px solid rgba(61,224,200,0.3); }
+.badge-draft { background: rgba(245,200,66,0.12); color: var(--amber); border: 0.5px solid rgba(245,200,66,0.3); }
+
+.card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; transition: all 0.2s; border: 0.5px solid;
+  font-family: var(--font);
+}
+.icon-btn-play { background: rgba(124,110,245,0.12); border-color: var(--border-purple); color: var(--purple-light); }
+.icon-btn-play:hover { background: var(--purple); color: white; transform: scale(1.1); }
+.icon-btn-edit { background: rgba(245,200,66,0.08); border-color: rgba(245,200,66,0.25); color: var(--amber); }
+.icon-btn-edit:hover { background: rgba(245,200,66,0.2); transform: scale(1.1); }
+.icon-btn-delete { background: rgba(229,57,53,0.08); border-color: rgba(229,57,53,0.2); color: #ef9a9a; }
+.icon-btn-delete:hover { background: rgba(229,57,53,0.2); color: #ef5350; transform: scale(1.1); }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+.empty-state .empty-icon { font-size: 52px; margin-bottom: 14px; opacity: 0.4; }
+.empty-state p { font-size: 15px; line-height: 1.7; }
+
+/* ===== CREATE PAGE ===== */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 13px; color: var(--text2); font-weight: 600; }
+.form-input {
+  background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; font-size: 14px;
+  color: var(--text); font-family: var(--font); outline: none;
+  transition: border-color 0.2s;
+}
+.form-input:focus { border-color: var(--purple); }
+select.form-input option { background: var(--bg3); }
+
+.section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.char-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.char-pick {
+  width: 58px; height: 58px; border-radius: 50%;
+  background: var(--bg3); display: flex; align-items: center;
+  justify-content: center; font-size: 26px; cursor: pointer;
+  border: 2px solid var(--border); transition: all 0.2s;
+}
+.char-pick.sel { border-color: var(--purple); background: rgba(124,110,245,0.15); transform: scale(1.1); box-shadow: 0 0 16px rgba(124,110,245,0.3); }
+.char-pick:hover:not(.sel) { border-color: var(--text2); transform: scale(1.05); }
+
+.q-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.q-item {
+  background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+}
+.q-item:hover { border-color: rgba(124,110,245,0.25); }
+.q-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+.q-top-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.q-label { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.q-edit-row { display: flex; flex-direction: column; gap: 8px; }
+.q-text-input {
+  background: rgba(255,255,255,0.05); border: 0.5px solid var(--border);
+  border-radius: 8px; padding: 9px 12px; font-size: 15px; font-weight: 700;
+  color: var(--text); font-family: var(--font); outline: none; width: 100%;
+  transition: border-color 0.2s;
+}
+.q-text-input:focus { border-color: var(--purple); }
+.q-hint-input {
+  background: rgba(61,224,200,0.04); border: 0.5px solid rgba(61,224,200,0.15);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px;
+  color: var(--text2); font-family: var(--font); outline: none; width: 100%;
+  transition: border-color 0.2s; resize: vertical; line-height: 1.5; min-height: 56px;
+}
+.q-hint-input:focus { border-color: var(--teal-dim); color: var(--text); }
+
+.rec-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; font-family: var(--font);
+  padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: all 0.2s; border: 0.5px solid;
+}
+.rec-btn.idle { background: rgba(245,115,106,0.1); color: var(--coral); border-color: rgba(245,115,106,0.3); }
+.rec-btn.idle:hover { background: rgba(245,115,106,0.2); }
+.rec-btn.recording { background: var(--coral); color: white; border-color: var(--coral); animation: rec-pulse 0.8s infinite; }
+.rec-btn.done { background: rgba(61,224,200,0.1); color: var(--teal); border-color: rgba(61,224,200,0.3); }
+.rec-btn.done:hover { background: rgba(61,224,200,0.2); }
+@keyframes rec-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,115,106,0.4)} 50%{box-shadow:0 0 0 8px rgba(245,115,106,0)} }
+
+.audio-clear-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; font-family: var(--font);
+  padding: 4px 10px; border-radius: 20px; cursor: pointer;
+  background: rgba(229,57,53,0.08); color: #ef9a9a;
+  border: 0.5px solid rgba(229,57,53,0.2); transition: all 0.2s;
+}
+.audio-clear-btn:hover { background: rgba(229,57,53,0.2); color: #ef5350; }
+
+.q-delete-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer; transition: all 0.2s;
+  background: rgba(229,57,53,0.06); border: 0.5px solid rgba(229,57,53,0.15);
+  color: #ef9a9a; flex-shrink: 0; font-family: var(--font);
+}
+.q-delete-btn:hover { background: rgba(229,57,53,0.22); color: #ef5350; transform: scale(1.1); }
+
+.add-q-btn {
+  width: 100%; padding: 12px; border: 1.5px dashed var(--border);
+  border-radius: 12px; background: transparent; color: var(--text2);
+  font-size: 13px; font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.add-q-btn:hover { border-color: var(--purple); color: var(--purple-light); background: rgba(124,110,245,0.04); }
+
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+.btn-cancel {
+  padding: 10px 20px; border-radius: 10px; background: transparent;
+  border: 0.5px solid var(--border); color: var(--text2);
+  font-size: 14px; font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.btn-cancel:hover { border-color: var(--text2); color: var(--text); }
+.btn-save {
+  padding: 10px 24px; border-radius: 10px; background: var(--purple);
+  border: none; color: white; font-size: 14px; font-weight: 700;
+  font-family: var(--font); cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-save:hover { background: var(--purple-light); transform: translateY(-1px); }
+.btn-play-now {
+  padding: 10px 24px; border-radius: 10px; background: var(--teal-dim);
+  border: none; color: white; font-size: 14px; font-weight: 700;
+  font-family: var(--font); cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.btn-play-now:hover { background: var(--teal); transform: translateY(-1px); }
+.btn-danger-outline {
+  padding: 10px 20px; border-radius: 10px;
+  background: rgba(229,57,53,0.08); border: 0.5px solid rgba(229,57,53,0.3); color: #ef9a9a;
+  font-size: 14px; font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.btn-danger-outline:hover { background: rgba(229,57,53,0.2); color: #ef5350; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--bg3); border: 0.5px solid var(--border-purple);
+  border-radius: 14px; padding: 12px 22px; font-size: 14px; font-weight: 600;
+  color: var(--text); z-index: 9999; transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4); white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ===== STUDENT PAGE ===== */
+.student-wrapper {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 20px; padding: 10px 0;
+}
+
+.progress-bar-wrap { width: 100%; max-width: 420px; }
+.progress-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--text2); }
+.progress-track { height: 4px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--teal)); border-radius: 4px; transition: width 0.4s ease; }
+.attempt-dots { display: flex; gap: 6px; justify-content: center; }
+.adot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); border: 1.5px solid var(--border); transition: all 0.3s; }
+.adot.used { background: var(--purple-light); border-color: var(--purple); }
+.adot.current { background: var(--amber); border-color: var(--amber); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+
+.avatar-stage {
+  position: relative; width: 200px; height: 200px;
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-glow {
+  position: absolute; inset: -20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,110,245,0.2) 0%, transparent 70%);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+@keyframes glow-pulse { 0%,100%{transform:scale(1);opacity:0.7} 50%{transform:scale(1.1);opacity:1} }
+.avatar-glow.speaking { animation: glow-speak 0.4s ease-in-out infinite alternate; }
+@keyframes glow-speak { from{transform:scale(1);opacity:0.5} to{transform:scale(1.15);opacity:1} }
+
+#avatar-svg {
+  width: 170px; height: 170px;
+  filter: drop-shadow(0 0 24px rgba(124,110,245,0.4));
+  transition: transform 0.1s;
+}
+#avatar-svg.speaking { animation: avatar-bob 0.5s ease-in-out infinite alternate; }
+@keyframes avatar-bob { from{transform:translateY(0) rotate(-1deg)} to{transform:translateY(-4px) rotate(1deg)} }
+
+.speech-bubble {
+  max-width: 420px; width: 100%;
+  background: var(--bg3); border: 0.5px solid var(--border-purple);
+  border-radius: 18px 18px 18px 4px; padding: 16px 20px;
+  font-size: 20px; font-weight: 700; text-align: center;
+  line-height: 1.5; color: var(--text);
+  position: relative; min-height: 60px;
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute; bottom: -10px; right: 20px;
+  border: 10px solid transparent;
+  border-top-color: var(--border-purple); border-bottom: none;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute; bottom: -8px; right: 21px;
+  border: 9px solid transparent;
+  border-top-color: var(--bg3); border-bottom: none;
+}
+.typing-cursor {
+  display: inline-block; width: 2px; height: 1em;
+  background: var(--purple-light); vertical-align: middle;
+  animation: blink 0.8s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.hint-panel {
+  max-width: 420px; width: 100%;
+  background: rgba(33,130,220,0.08); border: 0.5px solid rgba(56,150,240,0.3);
+  border-radius: 14px; padding: 16px 18px;
+  overflow: hidden; transition: all 0.3s ease;
+  max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
+}
+.hint-panel.open { max-height: 200px; opacity: 1; padding: 16px 18px; }
+.hint-label { font-size: 11px; font-weight: 800; color: #5bb8f5; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.hint-content { font-size: 14px; color: #a8d4f5; line-height: 1.7; direction: ltr; text-align: left; }
+.hint-content strong { color: white; }
+
+.student-controls { max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.ctrl-row { display: flex; gap: 10px; }
+.ctrl-btn {
+  flex: 1; padding: 14px 10px; border-radius: 14px;
+  font-size: 14px; font-weight: 700; font-family: var(--font);
+  cursor: pointer; border: 0.5px solid; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.ctrl-btn:active { transform: scale(0.97); }
+.btn-hint { background: rgba(33,130,220,0.1); color: #5bb8f5; border-color: rgba(56,150,240,0.3); }
+.btn-hint:hover { background: rgba(33,130,220,0.2); }
+.btn-replay { background: rgba(245,200,66,0.1); color: var(--amber); border-color: rgba(245,200,66,0.3); }
+.btn-replay:hover { background: rgba(245,200,66,0.2); }
+.btn-mic { background: rgba(245,115,106,0.1); color: var(--coral); border-color: rgba(245,115,106,0.3); }
+.btn-mic:hover { background: rgba(245,115,106,0.2); }
+.btn-mic.recording { background: var(--coral); color: white; animation: rec-pulse 0.8s infinite; }
+.btn-next { background: var(--purple); color: white; border-color: var(--purple); font-size: 16px; }
+.btn-next:hover { background: var(--purple-light); }
+.btn-next:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+.mic-status {
+  max-width: 420px; width: 100%;
+  display: none; align-items: center; gap: 12px;
+  background: rgba(245,115,106,0.08); border: 0.5px solid rgba(245,115,106,0.3);
+  border-radius: 12px; padding: 10px 16px; font-size: 13px; color: var(--coral);
+}
+.mic-status.show { display: flex; }
+.mic-wave { display: flex; gap: 3px; align-items: center; }
+.mic-wave span {
+  width: 3px; background: var(--coral); border-radius: 3px;
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+}
+.mic-wave span:nth-child(1){ height:6px; animation-delay:0s; }
+.mic-wave span:nth-child(2){ height:14px; animation-delay:0.1s; }
+.mic-wave span:nth-child(3){ height:10px; animation-delay:0.2s; }
+.mic-wave span:nth-child(4){ height:18px; animation-delay:0.3s; }
+.mic-wave span:nth-child(5){ height:8px; animation-delay:0.15s; }
+@keyframes wave-bar { from{transform:scaleY(0.5)} to{transform:scaleY(1)} }
+
+#success-screen {
+  display: none; flex-direction: column; align-items: center;
+  gap: 20px; padding: 40px 20px; text-align: center;
+}
+#success-screen.show { display: flex; }
+.success-icon { font-size: 72px; animation: bounce 0.6s ease; }
+@keyframes bounce { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+.success-title { font-size: 28px; font-weight: 800; color: var(--teal); }
+.success-sub { font-size: 15px; color: var(--text2); }
+.btn-restart {
+  padding: 12px 28px; border-radius: 12px; background: var(--teal-dim);
+  border: none; color: white; font-size: 15px; font-weight: 700;
+  font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.btn-restart:hover { background: var(--teal); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(5px); opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-overlay.show { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg2); border: 0.5px solid var(--border-purple);
+  border-radius: 20px; padding: 28px; width: 90%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  transform: scale(0.92); transition: transform 0.25s ease;
+}
+.modal-overlay.show .modal { transform: scale(1); }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.btn-danger {
+  padding: 10px 20px; border-radius: 10px; background: rgba(229,57,53,0.15);
+  border: 0.5px solid rgba(229,57,53,0.4); color: #ef5350;
+  font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer; transition: all 0.2s;
+}
+.btn-danger:hover { background: rgba(229,57,53,0.3); }
+
+/* Stars */
+.stars-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.star {
+  position: absolute; border-radius: 50%;
+  background: white; opacity: 0;
+  animation: twinkle var(--dur, 3s) var(--delay, 0s) infinite;
+}
+@keyframes twinkle { 0%,100%{opacity:0} 50%{opacity:var(--max-op,0.4)} }
+</style>
+</head>
+<body>
+
+<div class="stars-bg" id="stars"></div>
+<div class="toast" id="toast">✅ تم الحفظ</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">🗑 حذف المحادثة</div>
+    <div class="modal-sub">هل أنت متأكد من حذف هذه المحادثة؟ لا يمكن التراجع عن هذا الإجراء.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('delete-modal')">إلغاء</button>
+      <button class="btn-danger" id="confirm-delete-btn">حذف نهائياً</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear All Modal -->
+<div class="modal-overlay" id="clear-all-modal">
+  <div class="modal">
+    <div class="modal-title">⚠️ مسح جميع المحادثات</div>
+    <div class="modal-sub">سيتم حذف جميع المحادثات المحفوظة نهائياً. هل أنت متأكد؟</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('clear-all-modal')">إلغاء</button>
+      <button class="btn-danger" onclick="clearAllConvos()">مسح الكل</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <nav>
+    <div class="nav-logo">🗣 <span>أفاتار</span>تكلّم</div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showPage('teacher')">لوحة المعلم</button>
+      <button class="tab-btn" onclick="newConversation()">إنشاء محادثة</button>
+      <button class="tab-btn" onclick="openStudentMode()">وضع الطالب</button>
+    </div>
+  </nav>
+
+  <!-- ========= TEACHER PAGE ========= -->
+  <div id="page-teacher" class="page active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">محادثاتي</div>
+        <div class="page-sub" id="teacher-sub">لا توجد محادثات بعد</div>
+      </div>
+      <div class="header-actions">
+        <button id="clear-all-btn" class="btn-danger-outline" onclick="openModal('clear-all-modal')" style="display:none; font-size:13px; padding:9px 16px;">🗑 مسح الكل</button>
+        <button class="btn-new" onclick="newConversation()">+ محادثة جديدة</button>
+      </div>
+    </div>
+    <div class="convo-grid" id="convo-grid"></div>
+    <div class="empty-state" id="no-convos" style="display:none;">
+      <div class="empty-icon">🗂</div>
+      <p>لم تنشئ أي محادثة بعد.<br>ابدأ بإضافة محادثتك الأولى!</p>
+    </div>
+  </div>
+
+  <!-- ========= CREATE PAGE ========= -->
+  <div id="page-create" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="create-page-title">إنشاء محادثة جديدة</div>
+        <div class="page-sub">أضف أسئلتك وإرشادات الإجابة</div>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">اسم المحادثة</label>
+        <input class="form-input" id="convo-name" type="text" placeholder="مثال: التعارف الأول">
+      </div>
+      <div class="form-group">
+        <label class="form-label">المستوى</label>
+        <select class="form-input" id="convo-level">
+          <option>مبتدئ</option><option>متوسط</option><option>متقدم</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-title">🎭 اختر شخصية الأفاتار</div>
+    <div class="char-grid" id="char-grid">
+      <div class="char-pick sel" onclick="selectChar(this,'🧑')" data-char="🧑">🧑</div>
+      <div class="char-pick" onclick="selectChar(this,'👧')" data-char="👧">👧</div>
+      <div class="char-pick" onclick="selectChar(this,'👩')" data-char="👩">👩</div>
+      <div class="char-pick" onclick="selectChar(this,'🧓')" data-char="🧓">🧓</div>
+      <div class="char-pick" onclick="selectChar(this,'👵')" data-char="👵">👵</div>
+      <div class="char-pick" onclick="selectChar(this,'🤖')" data-char="🤖">🤖</div>
+      <div class="char-pick" onclick="selectChar(this,'👨‍🏫')" data-char="👨‍🏫">👨‍🏫</div>
+      <div class="char-pick" onclick="selectChar(this,'👩‍🏫')" data-char="👩‍🏫">👩‍🏫</div>
+    </div>
+
+    <div class="section-title">🎙 الأسئلة</div>
+    <div class="q-list" id="q-list"></div>
+    <button class="add-q-btn" onclick="addQuestion()">+ إضافة سؤال جديد</button>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="showPage('teacher')">إلغاء</button>
+      <button class="btn-save" onclick="saveConvo()">💾 حفظ</button>
+      <button class="btn-play-now" onclick="saveAndPlay()">▶ حفظ وتشغيل</button>
+    </div>
+  </div>
+
+  <!-- ========= STUDENT PAGE ========= -->
+  <div id="page-student" class="page">
+
+    <div id="success-screen">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">أحسنت! انتهت المحادثة</div>
+      <div class="success-sub">لقد أكملت جميع الأسئلة بنجاح</div>
+      <button class="btn-restart" onclick="restartStudent()">إعادة المحادثة</button>
+      <button class="btn-cancel" onclick="showPage('teacher')" style="margin-top:4px;">← العودة للقائمة</button>
+    </div>
+
+    <div id="student-main" class="student-wrapper">
+
+      <div class="progress-bar-wrap">
+        <div class="progress-info">
+          <span id="q-label">سؤال 1 من 0</span>
+          <span id="attempt-info">المحاولة 1 / 3</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="avatar-stage">
+        <div class="avatar-glow" id="avatar-glow"></div>
+        <svg id="avatar-svg" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="headGrad" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="#f5d5aa"/>
+              <stop offset="100%" stop-color="#d4a066"/>
+            </radialGradient>
+            <radialGradient id="bodyGrad" cx="50%" cy="30%">
+              <stop offset="0%" stop-color="#7c6ef5"/>
+              <stop offset="100%" stop-color="#4a3fc0"/>
+            </radialGradient>
+            <radialGradient id="eyeGrad" cx="50%" cy="30%">
+              <stop offset="0%" stop-color="#5c3d2e"/>
+              <stop offset="100%" stop-color="#2c1810"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="80" cy="138" rx="40" ry="28" fill="url(#bodyGrad)" opacity="0.9"/>
+          <rect x="70" y="104" width="20" height="18" rx="6" fill="url(#headGrad)"/>
+          <ellipse cx="80" cy="82" rx="38" ry="42" fill="url(#headGrad)"/>
+          <!-- hair (changes per avatar) -->
+          <g id="avatar-hair">
+            <ellipse cx="80" cy="46" rx="38" ry="18" fill="#3a2010"/>
+            <ellipse cx="80" cy="52" rx="34" ry="10" fill="#3a2010"/>
+          </g>
+          <ellipse cx="43" cy="83" rx="8" ry="10" fill="#d4a066"/>
+          <ellipse cx="117" cy="83" rx="8" ry="10" fill="#d4a066"/>
+          <ellipse cx="65" cy="80" rx="11" ry="10" fill="white"/>
+          <ellipse cx="95" cy="80" rx="11" ry="10" fill="white"/>
+          <circle cx="65" cy="81" r="7" fill="url(#eyeGrad)"/>
+          <circle cx="95" cy="81" r="7" fill="url(#eyeGrad)"/>
+          <circle id="pupil-l" cx="65" cy="81" r="4" fill="#1a0e09"/>
+          <circle id="pupil-r" cx="95" cy="81" r="4" fill="#1a0e09"/>
+          <circle cx="62" cy="78" r="2" fill="white" opacity="0.8"/>
+          <circle cx="92" cy="78" r="2" fill="white" opacity="0.8"/>
+          <path d="M55 68 Q65 63 75 67" stroke="#3a2010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M85 67 Q95 63 105 68" stroke="#3a2010" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <ellipse cx="80" cy="93" rx="4" ry="3" fill="#c49060" opacity="0.6"/>
+          <g id="mouth-group">
+            <ellipse id="mouth-outer" cx="80" cy="103" rx="12" ry="5" fill="#c0705a"/>
+            <ellipse id="mouth-inner" cx="80" cy="103" rx="9" ry="2" fill="white" opacity="0"/>
+            <path id="mouth-smile" d="M68 102 Q80 110 92 102" stroke="#c0705a" stroke-width="2" fill="none" stroke-linecap="round" opacity="0"/>
+          </g>
+          <ellipse cx="53" cy="90" rx="8" ry="5" fill="#e8a0a0" opacity="0.25"/>
+          <ellipse cx="107" cy="90" rx="8" ry="5" fill="#e8a0a0" opacity="0.25"/>
+        </svg>
+      </div>
+
+      <div class="speech-bubble">
+        <span id="speech-text">...</span>
+      </div>
+
+      <div class="hint-panel" id="hint-panel">
+        <div class="hint-label">🔍 إرشاد الإجابة</div>
+        <div class="hint-content" id="hint-content"></div>
+      </div>
+
+      <div class="attempt-dots">
+        <div class="adot current" id="dot0"></div>
+        <div class="adot" id="dot1"></div>
+        <div class="adot" id="dot2"></div>
+      </div>
+
+      <div class="mic-status" id="mic-status">
+        <div class="mic-wave">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <span>جارٍ التسجيل...</span>
+        <span id="mic-timer" style="margin-right:auto;opacity:0.7;font-size:12px;">0:00</span>
+      </div>
+
+      <div class="student-controls">
+        <div class="ctrl-row">
+          <button class="ctrl-btn btn-hint" onclick="toggleHint()">💡 أريد أن أفهم</button>
+          <button class="ctrl-btn btn-replay" onclick="replayQuestion()">🔊 إعادة السماع</button>
+        </div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn btn-mic" id="mic-btn" onclick="toggleRecord()">🎙 سجّل إجابتك</button>
+        </div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn btn-next" id="next-btn" onclick="nextStep()" disabled>التالي ◀</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7AJLA35DFXpYQoyl20jiieuatcJ9rdd8",
+    authDomain: "arabic-avatar-tool.firebaseapp.com",
+    projectId: "arabic-avatar-tool",
+    storageBucket: "arabic-avatar-tool.firebasestorage.app",
+    messagingSenderId: "1048257032462",
+    appId: "1:1048257032462:web:f08cbde404f702fc18e75f"
+  };
+
+  // تشغيل الفايربيز وتجهيز أدوات قاعدة البيانات والملفات
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();       // سنستخدمه لاحقاً لحفظ نصوص المحادثات بشكل دائم
+  const storage = firebase.storage();   // سنستخدمه لاحقاً لرفع وحفظ ملفات الصوت (audioBlob)
+// متغيرات سحابية جديدة لإدارة المايكروفون والملفات الصوتية
+let mediaRecorder;
+let audioChunks = [];
+let latestAudioUrl = "";
+</script>
+<script>
+// ===== STARS =====
+(function() {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2 + 0.5;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*5}s;--max-op:${0.1+Math.random()*0.4};`;
+    c.appendChild(s);
+  }
+})();
+
+// ===== STATE =====
+let conversations = [];
+let editingId = null;
+let selectedAvatar = '🧑';
+let pendingDeleteId = null;
+let qRecordings = {}; // {index: {audioUrl, duration, mediaRecorder}}
+let latestStudentAudioUrl = null;
+
+// Student
+let activeConvo = null;
+let currentQ = 0, attempt = 0;
+let isSpeaking = false, isRecording = false;
+let mouthInterval = null, recordTimer = null;
+let micTimerInterval = null, micSeconds = 0;
+
+
+// ===== NAVIGATION =====
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const map = { teacher: 0, create: 1, student: 2 };
+  document.querySelectorAll('.tab-btn')[map[name]].classList.add('active');
+}
+
+// ===== MODALS =====
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
+});
+
+// ===== TOAST =====
+function showToast(msg, dur = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ===== TEACHER PAGE =====
+function renderTeacher() {
+  const grid = document.getElementById('convo-grid');
+  const noConvos = document.getElementById('no-convos');
+  const sub = document.getElementById('teacher-sub');
+  const clearBtn = document.getElementById('clear-all-btn');
+
+  grid.innerHTML = '';
+
+  if (conversations.length === 0) {
+    noConvos.style.display = 'block';
+    sub.textContent = 'لا توجد محادثات بعد';
+    clearBtn.style.display = 'none';
+    return;
+  }
+
+  noConvos.style.display = 'none';
+  clearBtn.style.display = 'inline-flex';
+  const done = conversations.filter(c => c.questions.length > 0 && c.questions.some(q => q.text)).length;
+  sub.textContent = `${conversations.length} محادثة · ${done} جاهزة للتشغيل`;
+
+  conversations.forEach(convo => {
+    const hasQ = convo.questions.length > 0 && convo.questions.some(q => q.text && q.text.trim());
+    const card = document.createElement('div');
+    card.className = 'convo-card';
+    card.innerHTML = `
+      <div class="avatar-thumb">${convo.avatar}</div>
+      <div class="convo-info">
+        <div class="convo-name">${escHtml(convo.name) || 'بدون عنوان'}</div>
+        <div class="convo-meta">${convo.questions.filter(q=>q.text).length} أسئلة · ${convo.level}</div>
+      </div>
+      <span class="badge ${hasQ ? 'badge-done' : 'badge-draft'}">${hasQ ? '✓ جاهزة' : '⏸ مسودة'}</span>
+      <div class="card-actions">
+        <button class="icon-btn icon-btn-play" title="تشغيل" onclick="playConvo('${convo.id}')">▶</button>
+        <button class="icon-btn icon-btn-edit" title="تعديل" onclick="editConvo('${convo.id}')">✎</button>
+        <button class="icon-btn icon-btn-delete" title="حذف" onclick="askDelete('${convo.id}')">🗑</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function askDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('confirm-delete-btn').onclick = () => {
+    conversations = conversations.filter(c => c.id !== pendingDeleteId);
+    closeModal('delete-modal');
+    renderTeacher();
+    showToast('🗑 تم حذف المحادثة');
+  };
+  openModal('delete-modal');
+}
+
+function clearAllConvos() {
+  conversations = [];
+  closeModal('clear-all-modal');
+  renderTeacher();
+  showToast('🗑 تم مسح جميع المحادثات');
+}
+
+// ===== CREATE PAGE =====
+function newConversation() {
+  editingId = null;
+  selectedAvatar = '🧑';
+  document.getElementById('create-page-title').textContent = 'إنشاء محادثة جديدة';
+  document.getElementById('convo-name').value = '';
+  document.getElementById('convo-level').selectedIndex = 0;
+  document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === '🧑'));
+  qRecordings = {};
+  document.getElementById('q-list').innerHTML = '';
+  showPage('create');
+}
+
+function editConvo(id) {
+  const convo = conversations.find(c => c.id === id);
+  if (!convo) return;
+  editingId = id;
+  selectedAvatar = convo.avatar;
+  document.getElementById('create-page-title').textContent = 'تعديل المحادثة';
+  document.getElementById('convo-name').value = convo.name;
+  document.getElementById('convo-level').value = convo.level;
+  document.querySelectorAll('.char-pick').forEach(c => c.classList.toggle('sel', c.dataset.char === convo.avatar));
+  qRecordings = {};
+  convo.questions.forEach((q, i) => {
+    if (q.audioUrl) qRecordings[i] = { audioUrl: q.audioUrl, duration: q.audioDuration };
+  });
+  document.getElementById('q-list').innerHTML = '';
+  convo.questions.forEach((q, i) => addQuestionEl(i, q.text, q.hint, !!qRecordings[i], qRecordings[i]?.duration));
+  showPage('create');
+}
+
+function addQuestion() {
+  const i = document.getElementById('q-list').children.length;
+  addQuestionEl(i, '', '', false, null);
+}
+
+function addQuestionEl(i, text, hint, hasAudio, audioDuration) {
+  const list = document.getElementById('q-list');
+  const item = document.createElement('div');
+  item.className = 'q-item';
+  item.dataset.index = i;
+
+  const audioHtml = hasAudio
+    ? `<button class="rec-btn done" onclick="toggleQRecord(${i},this)">🔊 مسجّل · ${fmtDur(audioDuration)}</button>
+       <button class="audio-clear-btn" onclick="clearQAudio(${i},this)">✕ مسح الصوت</button>`
+    : `<button class="rec-btn idle" onclick="toggleQRecord(${i},this)">⏺ سجّل الآن</button>`;
+
+  item.innerHTML = `
+    <div class="q-top">
+      <span class="q-label">سؤال ${i + 1}</span>
+      <div class="q-top-left">
+        ${audioHtml}
+        <button class="q-delete-btn" onclick="deleteQuestion(this)" title="حذف السؤال">✕</button>
+      </div>
+    </div>
+    <div class="q-edit-row">
+      <input class="q-text-input" placeholder="نص السؤال الذي سيقوله الأفاتار..." value="${escHtml(text)}">
+      <textarea class="q-hint-input" rows="2" placeholder="إرشاد الإجابة للطالب (اختياري)...">${escHtml(hint)}</textarea>
+    </div>
+  `;
+  list.appendChild(item);
+}
+
+function deleteQuestion(btn) {
+  const item = btn.closest('.q-item');
+  const i = parseInt(item.dataset.index);
+  item.remove();
+  delete qRecordings[i];
+  reindexQuestions();
+}
+
+function reindexQuestions() {
+  const items = document.getElementById('q-list').querySelectorAll('.q-item');
+  const newRec = {};
+  items.forEach((item, idx) => {
+    const oldIdx = parseInt(item.dataset.index);
+    if (qRecordings[oldIdx]) newRec[idx] = qRecordings[oldIdx];
+    item.dataset.index = idx;
+    item.querySelector('.q-label').textContent = `سؤال ${idx + 1}`;
+    // Fix onclick indices
+    item.querySelectorAll('[onclick]').forEach(el => {
+      el.setAttribute('onclick', el.getAttribute('onclick').replace(/\(\d+,/, `(${idx},`).replace(/\(\d+\)/, `(${idx})`));
+    });
+  });
+  qRecordings = newRec;
+}
+
+function selectChar(el, char) {
+  document.querySelectorAll('.char-pick').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedAvatar = char;
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDur(sec) {
+  if (!sec && sec !== 0) return '0:00';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ===== AUDIO RECORDING (Create Page) =====
+async function toggleQRecord(i, btn) {
+
+  if (btn.classList.contains('recording')) {
+
+    if (qRecordings[i]?.mediaRecorder &&
+        qRecordings[i].mediaRecorder.state !== 'inactive') {
+
+      qRecordings[i].mediaRecorder.stop();
+    }
+
+    return;
+  }
+
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
+
+    if (!qRecordings[i]) qRecordings[i] = {};
+
+    const mr = new MediaRecorder(stream);
+
+    const chunks = [];
+
+    const startTime = Date.now();
+
+    qRecordings[i].mediaRecorder = mr;
+
+    mr.ondataavailable = e => {
+
+      if (e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+
+    mr.onstop = async () => {
+
+      stream.getTracks().forEach(t => t.stop());
+
+      const audioBlob = new Blob(chunks, {
+        type: 'audio/webm'
+      });
+
+      const duration = (Date.now() - startTime) / 1000;
+
+      btn.textContent = '⏳ جاري الرفع...';
+
+      try {
+
+        const fileName = `audios/${Date.now()}_${i}.webm`;
+
+        const fileRef = storage.ref().child(fileName);
+
+        await fileRef.put(audioBlob);
+
+        const downloadURL = await fileRef.getDownloadURL();
+
+        qRecordings[i].audioUrl = downloadURL;
+
+        qRecordings[i].duration = duration;
+
+        btn.className = 'rec-btn done';
+
+        btn.textContent = `🔊 تم الرفع · ${fmtDur(duration)}`;
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert('حدث خطأ أثناء رفع الصوت.');
+      }
+    };
+
+    mr.start();
+
+    btn.className = 'rec-btn recording';
+
+    btn.textContent = '⏹ إيقاف التسجيل';
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert('يجب السماح باستخدام الميكروفون.');
+  }
+}
+
+function clearQAudio(i, btn) {
+  if (qRecordings[i]) { qRecordings[i].blob = null; qRecordings[i].duration = null; }
+  const parent = btn.parentElement;
+  const recBtn = parent.querySelector('.rec-btn');
+  if (recBtn) {
+    recBtn.className = 'rec-btn idle';
+    recBtn.textContent = '⏺ سجّل الآن';
+    recBtn.setAttribute('onclick', `toggleQRecord(${i},this)`);
+  }
+  btn.remove();
+}
+
+// ===== SAVE =====
+function gatherForm() {
+  const name = document.getElementById('convo-name').value.trim();
+  const level = document.getElementById('convo-level').value;
+  const questions = [];
+  document.getElementById('q-list').querySelectorAll('.q-item').forEach((item, i) => {
+    questions.push({
+      text: item.querySelector('.q-text-input')?.value?.trim() || '',
+      hint: item.querySelector('.q-hint-input')?.value?.trim() || '',
+      audioUrl: qRecordings[i]?.audioUrl || null,
+      audioDuration: qRecordings[i]?.duration || null,
+    });
+  });
+  return { name: name || 'محادثة بدون عنوان', level, avatar: selectedAvatar, questions };
+}
+
+async function saveConvo() {
+
+  const data = gatherForm();
+
+  try {
+
+    if (editingId) {
+
+      await db.collection("conversations")
+        .doc(editingId)
+        .set(data);
+
+    } else {
+
+      const docRef = await db.collection("conversations")
+        .add({
+          ...data,
+          createdAt: new Date()
+        });
+
+      editingId = docRef.id;
+    }
+
+    await loadConversations();
+
+    showToast('✅ تم الحفظ سحابياً');
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert('حدث خطأ أثناء الحفظ.');
+  }
+}
+
+function saveAndPlay() {
+  const data = gatherForm();
+  if (!data.questions.some(q => q.text)) {
+    showToast('⚠️ أضف سؤالاً واحداً على الأقل قبل التشغيل');
+    return;
+  }
+  if (editingId) {
+    const idx = conversations.findIndex(c => c.id === editingId);
+    if (idx !== -1) conversations[idx] = { ...conversations[idx], ...data };
+  } else {
+    editingId = 'c_' + Date.now();
+    conversations.push({ id: editingId, ...data });
+  }
+  renderTeacher();
+  playConvo(editingId);
+}
+
+// ===== STUDENT MODE =====
+function openStudentMode() {
+  if (conversations.length === 0) {
+    showToast('⚠️ أنشئ محادثة أولاً ثم اضغط تشغيل');
+    showPage('teacher');
+    return;
+  }
+  const ready = conversations.find(c => c.questions.some(q => q.text));
+  if (ready) playConvo(ready.id);
+  else showToast('⚠️ لا توجد محادثات تحتوي على أسئلة بعد');
+}
+
+function playConvo(id) {
+  const convo = conversations.find(c => c.id === id);
+  if (!convo) return;
+  const validQ = convo.questions.filter(q => q.text);
+  if (validQ.length === 0) {
+    showToast('⚠️ هذه المحادثة لا تحتوي على أسئلة بعد');
+    return;
+  }
+  activeConvo = { ...convo, questions: validQ };
+  currentQ = 0; attempt = 0;
+  document.getElementById('success-screen').classList.remove('show');
+  document.getElementById('student-main').style.display = 'flex';
+  showPage('student');
+  updateStudentUI();
+  setTimeout(() => speakQuestion(), 600);
+}
+
+function restartStudent() {
+  if (!activeConvo) return;
+  currentQ = 0; attempt = 0;
+  document.getElementById('success-screen').classList.remove('show');
+  document.getElementById('student-main').style.display = 'flex';
+  updateStudentUI();
+  setTimeout(() => speakQuestion(), 400);
+}
+
+// ===== STUDENT UI =====
+function updateStudentUI() {
+  if (!activeConvo) return;
+  const questions = activeConvo.questions;
+  const q = questions[currentQ];
+  document.getElementById('q-label').textContent = `سؤال ${currentQ + 1} من ${questions.length}`;
+  document.getElementById('attempt-info').textContent = `المحاولة ${attempt + 1} / 3`;
+  document.getElementById('hint-content').innerHTML = q.hint || '<em>لا يوجد إرشاد لهذا السؤال</em>';
+  document.getElementById('hint-panel').classList.remove('open');
+  document.getElementById('next-btn').disabled = true;
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.className = 'ctrl-btn btn-mic';
+  micBtn.textContent = '🎙 سجّل إجابتك';
+  document.getElementById('mic-status').classList.remove('show');
+  document.getElementById('progress-fill').style.width = (currentQ / questions.length * 100) + '%';
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('dot' + i);
+    dot.className = 'adot';
+    if (i < attempt) dot.classList.add('used');
+    else if (i === attempt) dot.classList.add('current');
+  }
+}
+
+// ===== SPEAK =====
+function speakQuestion() {
+  if (isSpeaking || !activeConvo) return;
+  isSpeaking = true;
+  const q = activeConvo.questions[currentQ];
+  const text = q.text;
+  const bubble = document.getElementById('speech-text');
+  bubble.innerHTML = '';
+  document.getElementById('avatar-svg').classList.add('speaking');
+  document.getElementById('avatar-glow').classList.add('speaking');
+
+  // Play recorded audio if available
+  if (q.audioUrl) {
+
+    try {
+
+      const audio = new Audio(q.audioUrl);
+
+      audio.play().catch(() => {});
+
+    } catch(e) {
+
+      console.error(e);
+    }
+  }
+
+  let i = 0;
+  const typeInterval = setInterval(() => {
+    if (i <= text.length) {
+      bubble.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="typing-cursor"></span>' : '');
+      i++;
+    } else clearInterval(typeInterval);
+  }, 80);
+
+  let open = false, ticks = 0;
+  const maxTicks = Math.max(10, Math.round(text.length * 0.6));
+  mouthInterval = setInterval(() => {
+    ticks++;
+    open = !open;
+    animateMouth(open);
+    if (ticks >= maxTicks) {
+      clearInterval(mouthInterval);
+      animateMouth(false);
+      document.getElementById('avatar-svg').classList.remove('speaking');
+      document.getElementById('avatar-glow').classList.remove('speaking');
+      isSpeaking = false;
+      setTimeout(() => { document.getElementById('next-btn').disabled = false; }, 300);
+    }
+  }, 220);
+
+  blinkEyes();
+}
+
+function animateMouth(open) {
+  const outer = document.getElementById('mouth-outer');
+  const inner = document.getElementById('mouth-inner');
+  const smile = document.getElementById('mouth-smile');
+  if (open) {
+    outer.setAttribute('ry','8'); outer.setAttribute('cy','105');
+    inner.setAttribute('opacity','1'); inner.setAttribute('ry','5');
+    smile.setAttribute('opacity','0');
+  } else {
+    outer.setAttribute('ry','5'); outer.setAttribute('cy','103');
+    inner.setAttribute('opacity','0');
+    smile.setAttribute('opacity','1');
+  }
+}
+
+function blinkEyes() {
+  const pl = document.getElementById('pupil-l'), pr = document.getElementById('pupil-r');
+  setTimeout(() => {
+    pl.setAttribute('ry','1'); pr.setAttribute('ry','1');
+    setTimeout(() => { pl.removeAttribute('ry'); pr.removeAttribute('ry'); }, 120);
+  }, 800);
+}
+
+document.addEventListener('mousemove', e => {
+  const svg = document.getElementById('avatar-svg');
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  const dx = (e.clientX - (rect.left + rect.width/2)) / window.innerWidth * 4;
+  const dy = (e.clientY - (rect.top + rect.height/2)) / window.innerHeight * 4;
+  document.getElementById('pupil-l').setAttribute('cx', 65 + dx);
+  document.getElementById('pupil-l').setAttribute('cy', 81 + dy);
+  document.getElementById('pupil-r').setAttribute('cx', 95 + dx);
+  document.getElementById('pupil-r').setAttribute('cy', 81 + dy);
+});
+
+// ===== CONTROLS =====
+function toggleHint() { document.getElementById('hint-panel').classList.toggle('open'); }
+function replayQuestion() { if (!isSpeaking) speakQuestion(); }
+
+async function toggleRecord() {
+
+  const btn = document.getElementById('mic-btn');
+  const micStatus = document.getElementById('mic-status');
+
+  if (isRecording) {
+
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+
+    return;
+  }
+
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    isRecording = true;
+    audioChunks = [];
+    micSeconds = 0;
+
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) {
+        audioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+
+      stream.getTracks().forEach(track => track.stop());
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+      if (latestStudentAudioUrl) {
+        URL.revokeObjectURL(latestStudentAudioUrl);
+      }
+
+      latestStudentAudioUrl = URL.createObjectURL(audioBlob);
+
+      isRecording = false;
+
+      clearInterval(micTimerInterval);
+
+      micStatus.classList.remove('show');
+
+      btn.className = 'ctrl-btn btn-mic';
+
+      btn.innerHTML = '▶ تشغيل التسجيل';
+
+      btn.onclick = playStudentRecord;
+
+      document.getElementById('next-btn').disabled = false;
+    };
+
+    mediaRecorder.start();
+
+    btn.className = 'ctrl-btn btn-mic recording';
+
+    btn.textContent = '⏹ إيقاف التسجيل';
+
+    micStatus.classList.add('show');
+
+    document.getElementById('mic-timer').textContent = '0:00';
+
+    micTimerInterval = setInterval(() => {
+      micSeconds++;
+      document.getElementById('mic-timer').textContent = fmtDur(micSeconds);
+    }, 1000);
+
+  } catch (err) {
+
+    alert('يجب السماح باستخدام الميكروفون.');
+
+    console.error(err);
+  }
+}
+
+function playStudentRecord() {
+
+  if (!latestStudentAudioUrl) return;
+
+  const audio = new Audio(latestStudentAudioUrl);
+
+  const btn = document.getElementById('mic-btn');
+
+  audio.play();
+
+  btn.textContent = '⏸ إيقاف التشغيل';
+
+  audio.onended = () => {
+    btn.textContent = '▶ تشغيل التسجيل';
+    btn.onclick = playStudentRecord;
+  };
+
+  btn.onclick = () => {
+
+    if (!audio.paused) {
+      audio.pause();
+      btn.textContent = '▶ تشغيل التسجيل';
+    } else {
+      audio.play();
+      btn.textContent = '⏸ إيقاف التشغيل';
+    }
+  };
+}
+
+function simulateMicRecord(btn, micStatus) {
+  isRecording = true;
+  btn.className = 'ctrl-btn btn-mic recording';
+  btn.textContent = '⏹ إيقاف التسجيل';
+  micStatus.classList.add('show');
+  micSeconds = 0;
+  document.getElementById('mic-timer').textContent = '0:00';
+  micTimerInterval = setInterval(() => {
+    micSeconds++;
+    document.getElementById('mic-timer').textContent = fmtDur(micSeconds);
+  }, 1000);
+  recordTimer = setTimeout(() => {
+    clearInterval(micTimerInterval);
+    isRecording = false;
+    btn.className = 'ctrl-btn btn-mic';
+    btn.textContent = '✅ تم التسجيل';
+    micStatus.classList.remove('show');
+    document.getElementById('next-btn').disabled = false;
+  }, 5000);
+}
+
+function nextStep() {
+  if (!activeConvo) return;
+  const qs = activeConvo.questions;
+  attempt++;
+  if (attempt >= 3) { attempt = 0; currentQ++; }
+  if (currentQ >= qs.length) {
+    document.getElementById('student-main').style.display = 'none';
+    document.getElementById('success-screen').classList.add('show');
+    launchConfetti();
+    return;
+  }
+  updateStudentUI();
+  setTimeout(() => speakQuestion(), 400);
+}
+
+// ===== CONFETTI =====
+function launchConfetti() {
+  const colors = ['#7c6ef5','#3de0c8','#f5c842','#f5736a','#fff'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.style.cssText = `position:fixed;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;background:${colors[Math.floor(Math.random()*colors.length)]};top:-20px;left:${Math.random()*100}%;border-radius:${Math.random()>.5?'50%':'2px'};pointer-events:none;z-index:9999;animation:fall ${1.5+Math.random()*2}s ${Math.random()}s ease-in forwards;`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+const fs = document.createElement('style');
+fs.textContent = `@keyframes fall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(110vh) rotate(360deg);opacity:0}}`;
+document.head.appendChild(fs);
+
+// ===== INIT =====
+
+async function loadConversations() {
+
+  try {
+
+    const snapshot = await db.collection("conversations").get();
+
+    conversations = [];
+
+    snapshot.forEach(doc => {
+
+      conversations.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    renderTeacher();
+
+  } catch (error) {
+
+    console.error(error);
+  }
+}
+
+loadConversations();
+</script>
+</body>
+</html>
