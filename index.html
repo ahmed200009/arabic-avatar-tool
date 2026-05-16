@@ -1243,7 +1243,35 @@ select.form-input option { background: var(--bg3); }
   window.closeModal = closeModal;
   window.openModal = openModal;
   
-  renderTeacher();
+  // دالة لجلب المحادثات من الـ Firestore وعرضها في لوحة المعلم تلقائياً
+async function syncFromFirebase() {
+  const sub = document.getElementById('teacher-sub');
+  try {
+    // جلب كل المحادثات المخزنة في السحابة وترتيبها حسب وقت الإنشاء
+    const querySnapshot = await firebase.firestore().collection("conversations").orderBy("createdAt", "desc").get();
+    conversations = [];
+    
+    querySnapshot.forEach((doc) => {
+      const docData = doc.data();
+      conversations.push({
+        id: doc.id,
+        name: docData.name,
+        level: docData.level,
+        avatar: docData.avatar,
+        questions: docData.questions || []
+      });
+    });
+    
+    // إعادة بناء القائمة أمامك لتظهر المحادثات السحابية
+    renderTeacher();
+  } catch (error) {
+    console.error("خطأ أثناء جلب البيانات:", error);
+    if(sub) sub.textContent = "❌ فشل الاتصال بالسحابة الجلب التلقائي.";
+  }
+}
+
+// تشغيل الجلب التلقائي بمجرد فتح الموقع
+syncFromFirebase();
   </script>
 </body>
 </html>
